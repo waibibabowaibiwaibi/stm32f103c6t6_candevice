@@ -1,0 +1,39 @@
+# Changelog
+
+本项目遵循 [Semantic Versioning](https://semver.org/)；正式发布前的变更记录在这里。
+
+## [Unreleased]
+
+## [0.1.0-beta] - 2026-09-14
+
+### Added
+
+- STM32F103C6T6 UART ↔ CAN 固件
+- 经典 CAN 标准帧、扩展帧、数据帧与远程帧支持
+- `V` 状态计数器命令
+- PySide6 Windows 上位机、筛选、任务式发送和 CSV 导出
+- 上位机和串口协议支持查询、切换 10 / 20 / 50 / 100 / 125 / 250 / 500 / 800 / 1000 kbit/s CAN 波特率
+- Keil MDK-ARM / µVision 工程
+- PC13 非阻塞 CAN 收发活动指示，单次活动脉冲约 35 ms
+- 任务式发送支持每批帧数、间隔、发送次数、手动停止，以及 CAN ID/大端数据计数器逐帧递增
+- C 固件逻辑测试、Python 上位机测试和 GitHub Actions
+
+### Changed
+
+- 文档明确 TJA1050 只是实测收发器，其他满足电气与协议条件的经典高速 CAN 收发器也可使用
+- 明确当前硬件与固件不支持 CAN FD
+- 发送按钮启动独立任务并立即发送第一批；使用精确单次定时器调度后续批次
+- 串口发送队列增加容量上限和分批排空，避免高速发送占满内存或阻塞接收处理
+
+### Fixed
+
+- DLC/帧长越界检查
+- UART overrun 恢复、接收队列与发送短写处理
+- CAN bus-off 自动恢复
+- 链接脚本生成异常大 BIN 的问题
+- 保留 SWD 并避免 EIDE/Clang 的 `__aeabi_read_tp` 重复定义
+
+### Verification pending
+
+- 在真实 CAN 总线上验证除 250 kbit/s 外的其他波特率。
+- 在真实串口设备上长时间验证高频批量发送。

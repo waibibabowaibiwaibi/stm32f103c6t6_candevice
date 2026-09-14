@@ -1,0 +1,38 @@
+# dot files
+/.vscode/launch.json
+/.settings
+/.eide/log
+/.eide.usr.ctx.json
+
+# project out
+/build
+/bin
+/obj
+/out
+
+# eide template
+*.ept
+*.eide-template
+
+# EIDE-managed device family pack (~59 MB of vendored vendor files).
+# The EIDE extension re-downloads this from packDir in .eide/eide.yml.
+/.pack
+
+# local toolchain overrides
+/.env
+/toolchain.local.cmake
+
+# Python host application
+/host_app/.venv
+/host_app/build
+/host_app/dist
+__pycache__/
+*.py[cod]
+
+# Locally assembled GitHub Release assets
+/release
+
+# Keil MDK per-user state and generated build/listing output
+/MDK-ARM/c6t6.uvguix.*
+/MDK-ARM/c6t6/*
+/MDK-ARM/*.lst

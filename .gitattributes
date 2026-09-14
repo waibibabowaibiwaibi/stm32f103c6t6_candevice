@@ -1,0 +1,20 @@
+# Normalise line endings so the repo does not churn on Windows checkouts.
+# Everything here is text except the Keil flash-algorithm blobs.
+* text=auto eol=lf
+
+*.s     text eol=lf
+*.ld    text eol=lf
+*.c     text eol=lf
+*.h     text eol=lf
+*.yml   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.ps1   text eol=lf
+
+*.FLM   binary
+*.lib   binary
+*.a     binary
+*.bin   binary
+*.exe   binary
+*.png   binary
+*.svd   text eol=lf

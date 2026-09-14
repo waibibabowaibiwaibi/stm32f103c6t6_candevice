@@ -1,0 +1,216 @@
+# STM32 UART-CAN Converter — firmware development notes
+
+This is the detailed firmware/build reference. New users should start with the
+[main README](README.md), the [five-minute quick start](docs/QUICK_START.md),
+and the standalone [protocol reference](docs/PROTOCOL.md).
+
+## Hardware
+- **MCU**: STM32F103C6T6 (32 KB flash, 10 KB RAM)
+- **CAN**: PA11 (RX), PA12 (TX), 500 kbit/s after reset; runtime-selectable from 10 kbit/s to 1 Mbit/s
+- **UART**: PA9 (TX), PA10 (RX) (Baudrate: 115200)
+- **Activity/status LED**: PC13, active-low; a 35 ms non-blocking pulse on accepted TX or received CAN frames, solid low in `Error_Handler`
+
+Clock tree: HSE 8 MHz -> PLL x9 -> 72 MHz SYSCLK, APB1 36 MHz.
+Default CAN bit timing: `36 MHz / Prescaler(4) / (1 + TS1(15) + TS2(2)) = 500 kbit/s`,
+sample point 88.9%. `Core/Src/can_bitrate.c` contains the exact timing table for
+all nine supported rates; its host-side test verifies every divisor against the
+36 MHz peripheral clock.
+
+## Protocol
+
+The device uses a text-based protocol similar to SLCAN.
+
+### Sending CAN Messages (UART -> CAN)
+
+- **Standard Frame**: `tIIILDD...`
+  - `t`: Identifier for Standard Frame
+  - `III`: 3-digit Hex ID (e.g., `123`)
+  - `L`: 1-digit Data Length Code (0-8)
+  - `DD...`: Data bytes in Hex (2 digits per byte)
+  - Example: `t12381122334455667788` (ID: 0x123, DLC: 8, Data: 0x11, 0x22, ...)
+
+- **Extended Frame**: `TIIIIIIIILDD...`
+  - `T`: Identifier for Extended Frame
+  - `IIIIIIII`: 8-digit Hex ID
+  - `L`: 1-digit Data Length Code (0-8)
+  - `DD...`: Data bytes in Hex
+  - Example: `T0000012381122334455667788`
+
+- **Remote Frames**: use `r` / `R` in place of `t` / `T`, with no data bytes.
+  Example: `r1238` (standard remote frame, ID 0x123, DLC 8).
+
+- **Status Request**: send `V`. The device replies with one space-separated
+  line of counters:
+
+  ```
+  V <can_rx> <can_tx> <uart_drop> <cmd_drop> <cmd_bad> <can_tx_drop> <uart_err> <can_recover>
+  ```
+
+  | field | meaning |
+  |---|---|
+  | `can_rx` | frames forwarded CAN -> UART |
+  | `can_tx` | frames accepted UART -> CAN |
+  | `uart_drop` | bytes/frames dropped because the UART TX ring was full |
+  | `cmd_drop` | command lines dropped or too long |
+  | `cmd_bad` | command lines that were frames but malformed |
+  | `can_tx_drop` | frames dropped because all 3 CAN mailboxes were busy |
+  | `uart_err` | USART1 error recoveries |
+  | `can_recover` | successful CAN bus-off recoveries |
+
+- **CAN bit rate**: send `S?` to query the active rate, or `S0` through `S8`
+  to select 10, 20, 50, 100, 125, 250, 500, 800 or 1000 kbit/s. A successful
+  query/change returns `S <bitrate>`; a failed change returns `E S`. Changing
+  the rate stops bxCAN, calls `HAL_CAN_Init()` with the new timing, restores the
+  filter and notifications, and restarts the controller. A failed change rolls
+  back the previous `CAN_InitTypeDef`. The selection is not stored in Flash.
+
+Terminate commands with `\r` (Carriage Return). `\n` is also accepted.
+
+Every frame is length-checked against its identifier type before any data is
+read, and a DLC outside 0..8 is rejected outright. Malformed frames are counted
+in `cmd_bad` and otherwise ignored. Malformed `S` commands return `E S` and
+increment `cmd_bad`; other input that is neither a frame nor a device command
+is ignored silently.
+
+### Receiving CAN Messages (CAN -> UART)
+
+The device outputs received CAN messages in the same format as above,
+terminated with `\r`.
+
+## Building
+
+### CMake
+
+Two toolchains are supported and both are wired into `CMakePresets.json`:
+
+```sh
+cmake --preset Release        # ATfE clang (-Os), GNU ld, newlib-nano
+cmake --build --preset Release
+
+cmake --preset Debug          # ATfE clang (-Og)
+cmake --build --preset Debug
+
+cmake --preset gcc-Release    # arm-none-eabi-gcc (-Os)
+cmake --build --preset gcc-Release
+```
+
+Each build produces `c6t6.elf`, `c6t6.map`, `c6t6.hex` and `c6t6.bin` in
+`build/<preset>/`. Flash the `.hex`, or the `.bin` at `0x08000000`.
+
+Toolchain locations are discovered from `PATH`, a CMake cache variable, or an
+environment variable. No developer-specific path is built into the project:
+
+```sh
+cmake -DSTARM_TOOLCHAIN_PATH=/opt/ATfE/bin \
+      -DGNU_TOOLCHAIN_ROOT=/opt/gcc-arm-none-eabi \
+      --preset Release
+```
+
+For the GCC presets, `arm-none-eabi-*` must be on `PATH`, or pass
+`-DTOOLCHAIN_PREFIX=/path/to/bin/arm-none-eabi-`.
+
+### EIDE
+
+The `.eide` project uses the LLVM_ARM toolchain and builds from the `Core` and
+`Drivers` trees.
+
+### Keil MDK-ARM
+
+Open `MDK-ARM/c6t6.uvprojx` in µVision and build the `c6t6` target. The checked-in
+project targets STM32F103C6 and ARM Compiler 5.06, and references the same
+`Core` and `Drivers` sources as the other builds. Install the STM32F1 Device
+Family Pack and MDK Legacy Compiler Support if they are not already available.
+Generated target output (`MDK-ARM/c6t6/`), listings and per-user µVision state
+are intentionally ignored.
+
+### Windows host application
+
+The `host_app` directory contains a PySide6 desktop application for connecting
+to the bridge, viewing and filtering CAN traffic, sending frames, polling the
+device counters, and exporting CSV captures. Run it from source with:
+
+```powershell
+cd host_app
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe main.py
+```
+
+Build the single-file Windows application with `host_app/build_exe.ps1`.
+
+### Measured footprint
+
+| Build | text | data | bss | flash | RAM |
+|---|---|---|---|---|---|
+| gcc-Release (`-Os`) | 11628 | 100 | 2860 | 11728 B (36%) | ~2.9 KB (29%) |
+
+This row is from the current source. ATfE/EIDE and MDK use different runtime
+libraries, so their exact sizes should be read from their own build reports.
+
+## Tests
+
+The pure-logic modules (`Core/Src/can_bitrate.c`, `Core/Src/can_codec.c`,
+`Core/Inc/ringbuf.h`) have
+host-side unit tests that run on the development machine with an ordinary C
+compiler:
+
+```sh
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/run-host-tests.ps1
+```
+
+`tools/verify-build.ps1` is a standalone ARM rebuild used to validate changes
+without Ninja; it mirrors `cmake/starm-clang.cmake` and additionally asserts
+that every ELF LOAD segment sits at a low file offset (see the linker script
+note below).
+
+## Implementation notes
+
+Defects fixed here, worth not regressing:
+
+- **DLC and frame-length validation.** The data-copy loop used to be bounded by
+  the DLC taken straight off the wire, so a 5-character frame such as `t1239`
+  wrote `can_tx_data[8]` and clobbered the adjacent `can_rx_data` buffer. All
+  bounds are now enforced in `can_decode()` before any byte is copied.
+
+- **UART overrun recovery.** `HAL_UART_ErrorCallback` used to re-arm the
+  reception without clearing the ORE flag. Because ORE is a *blocking* error
+  for the HAL, the flag stayed set and every subsequent RXNE interrupt took the
+  error path again - an interrupt storm that starved the main loop and
+  permanently killed reception. The callback now performs the documented
+  SR-then-DR clear, calls `HAL_UART_AbortReceive()` and restarts cleanly.
+
+- **UART receive buffering.** The old ping-pong A/B buffer dropped every byte
+  that arrived while a message was pending, and could hand the main loop a
+  buffer the ISR would go on to reuse. Reception now assembles a line in a slot
+  and publishes it only once it is complete and NUL-terminated, through a
+  4-deep message queue (`ringbuf.h`).
+
+- **UART transmit short writes.** `HAL_UART_Transmit()` can return early on
+  timeout. The read pointer is now advanced only on success, so a short write
+  keeps the remaining bytes queued instead of discarding them.
+
+- **CAN bus-off recovery.** With `AutoBusOff` disabled and no recovery logic,
+  the node went permanently silent after a bus fault. `CAN_ServiceErrors()` now
+  detects bus-off, restarts the controller and reprograms the filter banks
+  (which `HAL_CAN_Stop()` deactivates).
+
+- **Runtime CAN bit rate changes.** The `S0`..`S8` path stops the controller,
+  re-enters bxCAN initialization through the HAL, restores filters and
+  notifications, and rolls the previous timing back if the new start fails.
+
+- **Non-blocking activity LED.** CAN callbacks only set an activity request
+  flag. The main loop drives active-low PC13 and extends the pulse for 35 ms
+  using `HAL_GetTick()`; it never calls `HAL_Delay()`. Repeated traffic extends
+  the pulse, so the LED appears continuously on at high frame rates.
+
+- **Linker script.** The `.data` load region had no controlled file offset, so
+  `objcopy -O binary` emitted a ~400 MB image. `.got`/`.got.plt` are now part
+  of the `.data` image and `._user_heap_stack` carries an explicit load region,
+  which brings the binary down to its real size. `verify-build.ps1` checks it.
+
+- **SWJ.** `__HAL_AFIO_REMAP_SWJ_DISABLE()` in `HAL_MspInit` removes the only
+  debug transport on an LQFP48 F103C6, leaving no way to re-flash short of a
+  full erase. It is now `__HAL_AFIO_REMAP_SWJ_NOJTAG()`, which keeps SWD.
+  `c6t6.ioc` has been updated to match (SYS debug is `Serial Wire`, i.e. PA13 =
+  `SYS_JTMS-SWDIO` and PA14 = `SYS_JTCK-SWCLK`), so regenerating from CubeMX
+  reproduces the SWD-safe `HAL_MspInit` rather than the old `SWJ_DISABLE` one.

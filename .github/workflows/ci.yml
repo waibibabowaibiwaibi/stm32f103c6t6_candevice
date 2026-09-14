@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install ARM GCC and Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gcc-arm-none-eabi ninja-build
+
+      - name: Build firmware
+        run: |
+          cmake --preset gcc-Release
+          cmake --build --preset gcc-Release
+
+      - name: Run firmware logic tests
+        shell: pwsh
+        run: ./tools/run-host-tests.ps1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: host_app/requirements.txt
+
+      - name: Install host application dependencies
+        run: python -m pip install -r host_app/requirements.txt
+
+      - name: Test host application
+        working-directory: host_app
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m unittest discover -s tests -v
+          python main.py --smoke-test

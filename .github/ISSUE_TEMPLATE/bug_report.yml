@@ -1,0 +1,56 @@
+name: Bug 报告
+description: 报告固件、串口协议或 Windows 上位机的问题
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请先阅读 docs/TROUBLESHOOTING.md，并移除客户数据、车辆信息和其他敏感 CAN 报文。
+  - type: dropdown
+    id: area
+    attributes:
+      label: 问题范围
+      options:
+        - STM32 固件
+        - Windows 上位机
+        - 串口协议
+        - 构建或打包
+        - 硬件接线
+    validations:
+      required: true
+  - type: textarea
+    id: hardware
+    attributes:
+      label: 硬件与环境
+      description: MCU 板、晶振、CAN 收发器、USB-UART、下载器、系统和工具版本。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 烧录……
+        2. 连接……
+        3. 发送……
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果与完整错误
+    validations:
+      required: true
+  - type: textarea
+    id: counters
+    attributes:
+      label: V 状态计数器和补充日志
+      description: 如可用，请提供 V 回复或已脱敏的日志。
