@@ -17,7 +17,7 @@
 - [x] `tools/run-host-tests.ps1` 全部通过（58 项检查）
 - [x] `host_app` Python 测试全部通过（24 项）
 - [x] 上位机源码 smoke test 通过
-- [x] Release 固件构建通过：Flash 镜像 11,728 B，静态 RAM 2,960 B
+- [x] Release 固件构建通过：Flash 镜像 11,728 B，RAM 区使用 2,952 B
 - [x] 打包版 EXE smoke test 通过
 
 ## 硬件验收
@@ -41,6 +41,6 @@
 
 4. 检查 `release/v0.1.0-beta/` 中的 EXE、HEX、BIN、许可证材料和 `SHA256SUMS.txt`；如发布 Qt/PySide6 二进制，按所选 LGPL/GPL/商业授权方式完成合规复核。
 5. 创建 annotated tag：`git tag -a v0.1.0-beta -m "UART-CAN Bridge v0.1.0-beta"`。
-6. 推送分支和 tag，在 GitHub 创建 Release，并上传上述四个文件。
+6. 推送分支和 tag，在 GitHub 创建 prerelease，并上传 `release/v0.1.0-beta/` 中的全部文件。
 7. 复核并粘贴 `docs/RELEASE_NOTES_v0.1.0-beta.md`，其中应包含实测硬件、可选 CAN 波特率、未签名 EXE 提示和已知限制。
-8. 在一台没有开发环境的 Windows 电脑上按 README 从 Release 下载并完整走一遍快速开始。
+8. 发布后，在一台没有开发环境的 Windows 电脑上按 README 从 Release 下载并完整走一遍快速开始。

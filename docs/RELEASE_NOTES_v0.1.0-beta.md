@@ -45,4 +45,4 @@
 - 已实测：250 kbit/s 下标准数据帧收发，以及 CAN ID/数据递增发送任务
 - 待验收：其他波特率、扩展帧、远程帧、30 分钟连续运行和 bus-off 恢复
 
-完成 `docs/RELEASE_CHECKLIST.md` 中剩余的硬件验收后，再将本文件内容粘贴到 GitHub Release 描述中。
+本版以 prerelease 形式发布；上述待验收项目会在后续硬件测试中继续完成。

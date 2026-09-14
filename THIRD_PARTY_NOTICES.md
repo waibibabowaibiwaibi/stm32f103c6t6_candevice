@@ -42,6 +42,15 @@ The source application depends on packages installed from Python package indexes
 | pyserial | 3.5 | BSD |
 | PyInstaller | 6.22.2 | GPL-2.0-or-later with the PyInstaller bootloader exception |
 
-PySide6 wheels bundle Qt libraries. Qt for Python documents its Community Edition as LGPLv3/GPLv3 and commercial-license software; see <https://doc.qt.io/qtforpython-6/> and its license index at <https://doc.qt.io/qtforpython-6/licenses.html>. Redistributors of the prebuilt application must comply with the option they select and the licenses of the Qt modules actually bundled. PyInstaller is a build tool, and its bootloader exception permits distribution of applications it creates; see <https://pyinstaller.org/en/stable/license.html>.
+The prebuilt application uses the LGPL-3.0 option for the dynamically loaded PySide6/Qt libraries. PySide6 wheels bundle Qt libraries. Qt for Python documents its Community Edition as LGPLv3/GPLv3 and commercial-license software; see <https://doc.qt.io/qtforpython-6/> and its license index at <https://doc.qt.io/qtforpython-6/licenses.html>. Corresponding Qt/PySide6 source releases are available from <https://download.qt.io/official_releases/QtForPython/>. Redistributors must comply with the license of every Qt module they actually bundle and preserve the user's ability to replace the dynamically loaded libraries.
+
+Copies of the relevant license texts are included in `licenses/` and in the GitHub Release assets:
+
+- [`licenses/LGPL-3.0.txt`](licenses/LGPL-3.0.txt) and [`licenses/GPL-3.0.txt`](licenses/GPL-3.0.txt) for PySide6/Qt
+- [`licenses/PYTHON-LICENSE.txt`](licenses/PYTHON-LICENSE.txt) for the bundled Python runtime
+- [`licenses/PYSERIAL-LICENSE.txt`](licenses/PYSERIAL-LICENSE.txt) for pyserial
+- [`licenses/PYINSTALLER-LICENSE.txt`](licenses/PYINSTALLER-LICENSE.txt) for PyInstaller and its bootloader exception
+
+PyInstaller is a build tool, and its bootloader exception permits distribution of applications it creates; see <https://pyinstaller.org/en/stable/license.html>.
 
 This inventory is provided to make compliance review easier and is not legal advice. When rebuilding, inspect the metadata and licenses of the exact resolved dependency versions rather than assuming this version table is still current.

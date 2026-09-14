@@ -10,8 +10,8 @@ $ProjectRoot = Split-Path -Parent $PSScriptRoot
 
 if (-not $FirmwareDirectory) {
     $candidates = @(
-        (Join-Path $ProjectRoot 'build\verify\Release'),
         (Join-Path $ProjectRoot 'build\gcc-Release'),
+        (Join-Path $ProjectRoot 'build\verify\Release'),
         (Join-Path $ProjectRoot 'build\Release')
     )
     $FirmwareDirectory = $candidates |
@@ -47,7 +47,12 @@ $assets = @(
     @{ Source = (Join-Path $ProjectRoot 'THIRD_PARTY_NOTICES.md'); Name = 'THIRD_PARTY_NOTICES.md' },
     @{ Source = (Join-Path $ProjectRoot 'Drivers\STM32F1xx_HAL_Driver\LICENSE.txt'); Name = 'STM32F1xx-HAL-LICENSE.txt' },
     @{ Source = (Join-Path $ProjectRoot 'Drivers\CMSIS\LICENSE.txt'); Name = 'CMSIS-LICENSE.txt' },
-    @{ Source = (Join-Path $ProjectRoot 'Drivers\CMSIS\Device\ST\STM32F1xx\LICENSE.txt'); Name = 'STM32F1xx-CMSIS-LICENSE.txt' }
+    @{ Source = (Join-Path $ProjectRoot 'Drivers\CMSIS\Device\ST\STM32F1xx\LICENSE.txt'); Name = 'STM32F1xx-CMSIS-LICENSE.txt' },
+    @{ Source = (Join-Path $ProjectRoot 'licenses\LGPL-3.0.txt'); Name = 'LGPL-3.0.txt' },
+    @{ Source = (Join-Path $ProjectRoot 'licenses\GPL-3.0.txt'); Name = 'GPL-3.0.txt' },
+    @{ Source = (Join-Path $ProjectRoot 'licenses\PYTHON-LICENSE.txt'); Name = 'PYTHON-LICENSE.txt' },
+    @{ Source = (Join-Path $ProjectRoot 'licenses\PYSERIAL-LICENSE.txt'); Name = 'PYSERIAL-LICENSE.txt' },
+    @{ Source = (Join-Path $ProjectRoot 'licenses\PYINSTALLER-LICENSE.txt'); Name = 'PYINSTALLER-LICENSE.txt' }
 )
 
 foreach ($asset in $assets) {
