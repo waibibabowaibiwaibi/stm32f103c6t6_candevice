@@ -16,10 +16,10 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Install ARM GCC and Ninja
+      - name: Install ARM GCC, Ninja, and Qt runtime libraries
         run: |
           sudo apt-get update
-          sudo apt-get install --yes gcc-arm-none-eabi ninja-build
+          sudo apt-get install --yes gcc-arm-none-eabi ninja-build libegl1
 
       - name: Build firmware
         run: |
