@@ -22,7 +22,7 @@
 
 ## 硬件验收
 
-- [x] 记录当前实测组合：STM32F103C6T6 / 8 MHz HSE、TJA1050、PowerWriter 串口设备、CMSIS-DAP
+- [x] 记录当前实测组合：STM32F103C6T6 / 8 MHz HSE、SN65HVD230、PowerWriter 串口设备、CMSIS-DAP
 - [ ] 在 500 kbit/s、双 120 Ω 终端的实验总线上验证 UART → CAN
 - [ ] 验证 CAN → UART，包括标准帧、扩展帧和远程帧
 - [ ] 连续运行至少 30 分钟，无异常丢帧和串口错误增长

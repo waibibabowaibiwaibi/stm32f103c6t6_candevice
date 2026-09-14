@@ -39,7 +39,7 @@
 ## 当前实测环境
 
 - MCU：STM32F103C6T6，8 MHz 外部晶振
-- CAN 收发器：TJA1050
+- CAN 收发器：SN65HVD230
 - USB-UART：PowerWriter 串口设备，115200 8N1
 - 下载器：CMSIS-DAP
 - 已实测：250 kbit/s 下标准数据帧收发，以及 CAN ID/数据递增发送任务
