@@ -74,7 +74,8 @@ jobs:
 
       - name: Build Linux application and package
         if: runner.os == 'Linux'
-        run: bash host_app/build_linux.sh
+        # Reuse the default pip cache so the setup-python cache step can save it.
+        run: PIP_CACHE_DIR="$HOME/.cache/pip" bash host_app/build_linux.sh
 
       - name: Build Windows application
         if: runner.os == 'Windows'

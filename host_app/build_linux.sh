@@ -9,7 +9,7 @@ fi
 host_app_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 task_python="${PYTHON:-python3}"
 virtual_python="$host_app_root/.venv/bin/python"
-export PIP_CACHE_DIR="$host_app_root/build/pip-cache"
+export PIP_CACHE_DIR="${PIP_CACHE_DIR:-$host_app_root/build/pip-cache}"
 export PYINSTALLER_CONFIG_DIR="$host_app_root/build/pyinstaller-cache"
 
 if [[ ! -x "$virtual_python" ]]; then
