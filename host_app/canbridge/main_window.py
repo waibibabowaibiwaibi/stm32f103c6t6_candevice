@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt, QTimer
-from PySide6.QtGui import QAction, QCloseEvent, QColor, QFont, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QAction, QCloseEvent, QColor, QFont, QFontDatabase, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -49,45 +49,7 @@ from .protocol import (
     parse_identifier,
 )
 from .serial_worker import SerialWorker
-
-
-APP_STYLE = """
-QMainWindow, QWidget { background: #0f172a; color: #e2e8f0; }
-QGroupBox {
-    border: 1px solid #334155; border-radius: 8px; margin-top: 12px;
-    padding: 10px 8px 8px 8px; font-weight: 600;
-}
-QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 5px; color: #93c5fd; }
-QLineEdit, QComboBox, QSpinBox {
-    background: #1e293b; border: 1px solid #475569; border-radius: 5px;
-    padding: 6px; selection-background-color: #2563eb;
-}
-QLineEdit:focus, QComboBox:focus, QSpinBox:focus { border-color: #38bdf8; }
-QPushButton {
-    background: #1e40af; border: 1px solid #3b82f6; border-radius: 5px;
-    padding: 7px 14px; font-weight: 600;
-}
-QPushButton:hover { background: #2563eb; }
-QPushButton:pressed { background: #1d4ed8; }
-QPushButton:disabled { background: #334155; border-color: #475569; color: #94a3b8; }
-QPushButton#dangerButton { background: #7f1d1d; border-color: #ef4444; }
-QPushButton#quietButton { background: #1e293b; border-color: #475569; }
-QTableView {
-    background: #111827; alternate-background-color: #172033; border: 1px solid #334155;
-    border-radius: 6px; gridline-color: #273449; selection-background-color: #1d4ed8;
-}
-QHeaderView::section {
-    background: #1e293b; color: #cbd5e1; border: 0; border-right: 1px solid #334155;
-    border-bottom: 1px solid #334155; padding: 7px; font-weight: 600;
-}
-QFrame#statCard { background: #111827; border: 1px solid #334155; border-radius: 7px; }
-QLabel#statValue { color: #67e8f9; font-size: 17px; font-weight: 700; }
-QLabel#muted { color: #94a3b8; }
-QLabel#connected { color: #4ade80; font-weight: 700; }
-QLabel#disconnected { color: #f87171; font-weight: 700; }
-QStatusBar { background: #111827; color: #94a3b8; }
-QSplitter::handle { background: #334155; height: 2px; }
-"""
+from .theme import THEME_MODES, ThemeController
 
 
 STAT_LABELS = (
@@ -103,14 +65,15 @@ STAT_LABELS = (
 
 
 class MainWindow(QMainWindow):
-    def __init__(self) -> None:
+    def __init__(self, settings: QSettings | None = None, theme_controller: ThemeController | None = None) -> None:
         super().__init__()
         self.setWindowTitle("UART-CAN 上位机")
         self.setMinimumSize(1040, 680)
         self.resize(1280, 800)
         self.setWindowIcon(self._make_icon())
 
-        self._settings = QSettings("CANDevice", "UART-CAN Host")
+        self._settings = settings if settings is not None else QSettings("CANDevice", "UART-CAN Host")
+        self._theme_controller = theme_controller if theme_controller is not None else configure_application(QApplication.instance())
         self._worker: SerialWorker | None = None
         self._sequence = 0
         self._capture_paused = False
@@ -123,6 +86,8 @@ class MainWindow(QMainWindow):
         self._last_send_error = ""
 
         self._frame_model = FrameTableModel(parent=self)
+        self._frame_model.set_theme(self._theme_controller.theme)
+        self._theme_controller.theme_changed.connect(self._frame_model.set_theme)
         self._proxy_model = FrameFilterProxyModel(self)
         self._proxy_model.setSourceModel(self._frame_model)
 
@@ -176,7 +141,7 @@ class MainWindow(QMainWindow):
 
         self.baud_combo = QComboBox()
         self.baud_combo.addItems(("9600", "57600", "115200", "230400", "460800", "921600"))
-        self.baud_combo.setCurrentText("115200")
+        self.baud_combo.setCurrentText("921600")
 
         self.can_bitrate_combo = QComboBox()
         for bitrate in CAN_BITRATES:
@@ -197,6 +162,12 @@ class MainWindow(QMainWindow):
         self.auto_status_checkbox.setChecked(True)
         self.auto_status_checkbox.toggled.connect(self._update_status_polling)
 
+        self.theme_combo = QComboBox()
+        for label, mode in THEME_MODES:
+            self.theme_combo.addItem(label, mode)
+        self.theme_combo.setCurrentIndex(self.theme_combo.findData(self._theme_controller.mode))
+        self.theme_combo.currentIndexChanged.connect(self._change_theme)
+
         layout.addWidget(QLabel("串口"), 0, 0)
         layout.addWidget(self.port_combo, 0, 1)
         layout.addWidget(self.refresh_button, 0, 2)
@@ -208,10 +179,15 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("CAN 波特率"), 1, 0)
         layout.addWidget(self.can_bitrate_combo, 1, 1)
         layout.addWidget(self.can_bitrate_button, 1, 2)
-        layout.addWidget(self.can_bitrate_label, 1, 3, 1, 5)
+        layout.addWidget(self.can_bitrate_label, 1, 3, 1, 3)
+        layout.addWidget(QLabel("主题"), 1, 6)
+        layout.addWidget(self.theme_combo, 1, 7)
         layout.setColumnStretch(1, 1)
         layout.setColumnStretch(6, 1)
         return group
+
+    def _change_theme(self) -> None:
+        self._theme_controller.set_mode(self.theme_combo.currentData())
 
     def _build_stats_panel(self) -> QHBoxLayout:
         layout = QHBoxLayout()
@@ -373,7 +349,7 @@ class MainWindow(QMainWindow):
 
         hint = QLabel(
             "总帧数 = 每次帧数 × 发送次数；第一批立即发送。"
-            "1 ms 为调度目标，实际速度受 Windows 与 115200 UART 限制。TX 不代表 CAN 总线 ACK。"
+            "1 ms 为调度目标，实际速度受操作系统与 UART 带宽限制。TX 不代表 CAN 总线 ACK。"
         )
         hint.setObjectName("muted")
         outer.addWidget(hint)
@@ -437,7 +413,7 @@ class MainWindow(QMainWindow):
     def _on_port_opened(self, port: str) -> None:
         self._update_connection_ui(True)
         self.connection_label.setText(f"● 已连接 {port}")
-        self.statusBar().showMessage(f"已连接 {port}，设备 UART 应设置为 115200 8N1")
+        self.statusBar().showMessage(f"已连接 {port}，设备 UART 应设置为 921600 8N1")
         self._update_status_polling()
         QTimer.singleShot(120, self._request_status)
         QTimer.singleShot(220, self._request_can_bitrate)
@@ -786,7 +762,7 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"已导出 {self._proxy_model.rowCount()} 帧到 {path_text}")
 
     def _restore_settings(self) -> None:
-        baudrate = self._settings.value("serial/baudrate", 115200, type=int)
+        baudrate = self._settings.value("serial/baudrate", 921600, type=int)
         if self.baud_combo.findText(str(baudrate)) >= 0:
             self.baud_combo.setCurrentText(str(baudrate))
         can_bitrate = self._settings.value("can/bitrate", 500_000, type=int)
@@ -827,10 +803,22 @@ class MainWindow(QMainWindow):
         return QIcon(pixmap)
 
 
-def configure_application(app: QApplication) -> None:
+def configure_application(app: QApplication, settings: QSettings | None = None) -> ThemeController:
+    existing = app.findChild(ThemeController, "themeController")
+    if existing is not None:
+        return existing
     app.setApplicationName("UART-CAN 上位机")
     app.setOrganizationName("CANDevice")
+    app.setDesktopFileName("UART-CAN-Host")
     app.setStyle("Fusion")
-    app.setStyleSheet(APP_STYLE)
-    font = QFont("Microsoft YaHei UI", 10)
+    font = QFont(app.font())
+    available = set(QFontDatabase.families())
+    for family in ("Microsoft YaHei UI", "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei"):
+        if family in available:
+            font.setFamily(family)
+            break
+    font.setPointSize(10)
     app.setFont(font)
+    if settings is None:
+        settings = QSettings("CANDevice", "UART-CAN Host")
+    return ThemeController(app, settings)

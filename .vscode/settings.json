@@ -1,8 +1,7 @@
 {
-    "cmake.cmakePath": "cube-cmake",
-    "cmake.configureArgs": [
-        "-DCMAKE_COMMAND=cube-cmake"
-    ],
+    "cmake.cmakePath": "cmake",
+    "cmake.useCMakePresets": "always",
+    "EIDE.Option.EnableClangdConfigGenerator": false,
     "cmake.preferredGenerators": [
         "Ninja"
     ],

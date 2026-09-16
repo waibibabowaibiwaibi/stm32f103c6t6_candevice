@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+import argparse
 from datetime import datetime, timedelta
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -14,6 +16,7 @@ PROJECT_ROOT = HOST_ROOT.parent
 sys.path.insert(0, str(HOST_ROOT))
 
 from PySide6.QtGui import QFontDatabase  # noqa: E402
+from PySide6.QtCore import QSettings  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from canbridge.frame_model import FrameRecord  # noqa: E402
@@ -22,15 +25,27 @@ from canbridge.protocol import CanFrame  # noqa: E402
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--theme", choices=("light", "dark"), default="dark")
+    parser.add_argument("--output", type=Path, default=PROJECT_ROOT / "docs/images/host-app.png")
+    args = parser.parse_args()
     app = QApplication.instance() or QApplication([])
     windows_cjk_font = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts" / "msyh.ttc"
     if windows_cjk_font.exists():
         QFontDatabase.addApplicationFont(str(windows_cjk_font))
-    configure_application(app)
-    window = MainWindow()
+    with TemporaryDirectory(prefix="uart-can-screenshot-") as directory:
+        settings = QSettings(str(Path(directory) / "settings.ini"), QSettings.IniFormat)
+        controller = configure_application(app, settings)
+        controller.set_mode(args.theme)
+        window = MainWindow(settings=settings)
+        return capture(app, window, args.output)
+
+
+def capture(app: QApplication, window: MainWindow, output: Path) -> int:
 
     window.port_combo.clear()
-    window.port_combo.addItem("COM7 — USB Serial Port（演示）", "COM7")
+    port = "/dev/ttyUSB0" if sys.platform.startswith("linux") else "COM7"
+    window.port_combo.addItem(f"{port} — USB Serial Port（演示）", port)
     window.connection_label.setText("● 已连接（演示）")
     window.connection_label.setObjectName("connected")
     window.connection_label.style().unpolish(window.connection_label)
@@ -72,7 +87,6 @@ def main() -> int:
     window.resize(1280, 800)
     window.show()
     app.processEvents()
-    output = PROJECT_ROOT / "docs" / "images" / "host-app.png"
     output.parent.mkdir(parents=True, exist_ok=True)
     if not window.grab().save(str(output), "PNG"):
         raise RuntimeError(f"Could not save screenshot to {output}")

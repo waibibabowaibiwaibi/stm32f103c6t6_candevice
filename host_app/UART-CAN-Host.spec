@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys
 
 a = Analysis(
     ['main.py'],
@@ -29,7 +30,8 @@ def is_windows_compatibility_dll(entry):
     )
 
 
-a.binaries = [entry for entry in a.binaries if not is_windows_compatibility_dll(entry)]
+if sys.platform == 'win32':
+    a.binaries = [entry for entry in a.binaries if not is_windows_compatibility_dll(entry)]
 
 pyz = PYZ(a.pure)
 

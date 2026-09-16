@@ -25,7 +25,7 @@ CAN 收发器的供电、待机/使能引脚和逻辑阈值因型号而异，以
 | RXD | PA9 / USART1_TX |
 | GND | GND |
 
-USB-UART 只负责串口通信。本项目的 STM32F103 固件不是 USB CDC 设备，电脑上出现的 COM 口来自 USB-UART 转换器。
+USB-UART 只负责串口通信。本项目的 STM32F103 固件不是 USB CDC 设备，电脑上出现的 COM 口或 Linux 串口设备来自 USB-UART 转换器。
 
 ### CAN 收发器
 
@@ -55,12 +55,14 @@ USB-UART 只负责串口通信。本项目的 STM32F103 固件不是 USB CDC 设
 
 ## 4. 打开上位机
 
-1. 从 Release 下载并运行 `UART-CAN-Host-<version>-windows-x64.exe`。
+1. Windows 从 Release 下载并运行 `UART-CAN-Host-<version>-windows-x64.exe`；Linux 按[上位机说明](../host_app/README.md#构建与运行-linux-版本)构建或下载 Actions 的 Linux 压缩包，解压后运行 `./UART-CAN-Host`。
 2. Windows 首次运行未签名 EXE 时可能显示 SmartScreen 提示；先用 `SHA256SUMS.txt` 校验文件来自本仓库 Release。
-3. 点击“刷新串口”，选择 USB-UART 对应的 COM 口。
-4. 保持 `115200` 波特率，点击“连接”。
+3. 点击“刷新串口”，选择 USB-UART 对应的 COM 口或 `/dev/ttyUSB*`、`/dev/ttyACM*` 设备。
+4. 保持 `921600` 波特率，点击“连接”。
 5. 保持“每秒读取设备状态”勾选。
 6. 上位机会读取设备 CAN 波特率；默认应显示 `500 kbit/s（已生效）`。如需其他速率，选择后点击“应用 CAN 波特率”，并把第二个 CAN 节点设为相同值。
+
+Linux 如出现串口权限错误，按[权限说明](../host_app/README.md#linux-串口权限)加入设备所属组并重新登录。界面默认跟随系统亮暗，右侧“主题”可手动选择亮色或暗色。
 
 如果状态数字能够刷新，PC ↔ USB-UART ↔ MCU 链路正常。若没有响应，请先检查 TX/RX 是否交叉、GND 是否共地，以及固件是否运行。
 
@@ -93,7 +95,7 @@ DATA: DE AD BE EF
 
 ## 验收清单
 
-- [ ] 上位机可以连接正确的 COM 口
+- [ ] 上位机可以连接正确的串口设备
 - [ ] 状态计数器每秒刷新
 - [ ] 上位机读出的 CAN 波特率与第二个节点一致
 - [ ] 第二个节点收到 `0x123` 测试帧

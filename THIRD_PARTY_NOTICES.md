@@ -31,7 +31,7 @@ The compiled firmware combines original project code with the components above. 
 - Portions generated from STMicroelectronics templates retain the copyright and license notices embedded in those files and the applicable STM32Cube package terms
 - Original code inside the generated `USER CODE` regions is covered by the project MIT license unless otherwise marked
 
-## Windows host application dependencies
+## Windows and Linux host application dependencies
 
 The source application depends on packages installed from Python package indexes. The current `v0.1.0-beta` Windows build was produced with:
 
@@ -41,6 +41,8 @@ The source application depends on packages installed from Python package indexes
 | PySide6 / Shiboken6 | 6.11.2 | LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only |
 | pyserial | 3.5 | BSD |
 | PyInstaller | 6.22.2 | GPL-2.0-or-later with the PyInstaller bootloader exception |
+
+New Windows and Linux builds install `PySide6-Essentials` instead of the full `PySide6` meta-package. It supplies all Qt modules used by this Widgets application; see [Qt's Essentials package inventory](https://github.com/qtproject/pyside-pyside-setup/blob/dev/README.pyside6_essentials.md). The `PySide6` import namespace and licensing remain the same. Exact package versions are pinned in `host_app/requirements-release.txt`; the Linux package records its build architecture, glibc and Python version in `BUILD-INFO.txt`.
 
 The prebuilt application uses the LGPL-3.0 option for the dynamically loaded PySide6/Qt libraries. PySide6 wheels bundle Qt libraries. Qt for Python documents its Community Edition as LGPLv3/GPLv3 and commercial-license software; see <https://doc.qt.io/qtforpython-6/> and its license index at <https://doc.qt.io/qtforpython-6/licenses.html>. Corresponding Qt/PySide6 source releases are available from <https://download.qt.io/official_releases/QtForPython/>. Redistributors must comply with the license of every Qt module they actually bundle and preserve the user's ability to replace the dynamically loaded libraries.
 

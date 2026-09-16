@@ -7,7 +7,7 @@
 请尽量包含：
 
 - MCU 板、CAN 收发器、USB-UART 和下载器型号
-- Windows、Python、EIDE/CMake 和工具链版本
+- 操作系统、Python、EIDE/CMake 和工具链版本
 - CAN 总线波特率、节点数量与终端电阻情况
 - 可复现步骤、期望结果、实际结果和完整错误输出
 - 若涉及报文，提供脱敏后的原始串口文本或 CSV

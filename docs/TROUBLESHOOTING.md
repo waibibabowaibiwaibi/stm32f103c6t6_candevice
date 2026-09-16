@@ -2,16 +2,23 @@
 
 建议按“电脑串口 → MCU 固件 → CAN 收发器 → 总线”的顺序检查，不要同时更换多个变量。
 
-## 上位机找不到 COM 口
+## 上位机找不到串口
 
 - 本项目需要外部 USB-UART，STM32F103 固件本身不会枚举为 USB CDC 串口
-- 检查 USB-UART 驱动和数据线，并在 Windows 设备管理器中确认端口号
+- 检查 USB-UART 驱动和数据线；Windows 在设备管理器中确认 COM 号，Linux 用 `ls /dev/ttyUSB* /dev/ttyACM*` 确认设备
 - 拔插设备后点击“刷新串口”
 - 确认没有其他串口工具独占该端口
 
+## Linux 串口权限或启动错误
+
+- `Permission denied`：按[Linux 串口权限说明](../host_app/README.md#linux-串口权限)加入设备所属组（通常是 `dialout` 或 `uucp`），并重新登录
+- `Could not load the Qt platform plugin "xcb"`：安装[上位机说明](../host_app/README.md#linux)中的系统运行库；可临时设置 `QT_DEBUG_PLUGINS=1` 查看缺失的库
+- `GLIBC_x.y not found`：该程序在更新的发行版上构建；在当前系统从源码运行或重新构建
+- 主题没有跟随系统：确认选择了“跟随系统”，并检查桌面的 `xdg-desktop-portal` 及对应后端是否正常；没有系统外观偏好时会使用亮色
+
 ## 可以打开串口，但状态计数器不刷新
 
-- 波特率必须为 `115200 8N1`，无流控
+- 波特率必须为 `921600 8N1`，无流控；若上位机保留了旧设置，请手动改为 `921600`
 - USB-UART TXD 应接 PA10，RXD 应接 PA9，且必须共地
 - 用普通串口工具发送 `V\r`，应收到 8 个数字组成的 `V ...` 回复
 - 检查固件是否烧录到 `0x08000000` 并正常复位
@@ -38,7 +45,7 @@
 
 ## 丢帧或错误计数增加
 
-- `uart_drop`：上位机读取不够快或 CAN 流量超过 115200 串口可承载范围
+- `uart_drop`：上位机读取不够快或 CAN 流量超过 921600 串口在文本编码下的可承载范围
 - `cmd_drop`：命令输入过快、行过长或固件命令队列已满
 - `cmd_bad`：ID、DLC、数据长度或十六进制格式错误
 - `can_tx_drop`：CAN 三个发送邮箱均忙，降低发送频率并检查总线 ACK

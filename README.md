@@ -1,6 +1,6 @@
 # UART-CAN Bridge
 
-一个基于 STM32F103C6T6 的开源 UART ↔ CAN 转换器，包含设备固件、Windows 图形上位机和开放的文本协议。
+一个基于 STM32F103C6T6 的开源 UART ↔ CAN 转换器，包含设备固件、Windows / Linux 图形上位机和开放的文本协议。
 
 > “卧槽张哥，你把 CAN 盒拿走了，那我呢？”
 >
@@ -8,7 +8,7 @@
 >
 > “太好了，是f103，我们有救了！”
 
-![UART-CAN Windows 上位机](docs/images/host-app.png)
+![UART-CAN 上位机](docs/images/host-app.png)
 
 > [!IMPORTANT]
 > 当前仓库处于 **v0.1.0-beta** 阶段。软件构建与自动测试已经通过，基本收发已在作者的 STM32F103C6T6 + SN65HVD230 实物上验证；发布前仍需完成全波特率、长时间和故障恢复验收。本项目仅用于学习和实验室调试，不适用于安全关键控制；使用者需自行评估连接、数据与操作风险。
@@ -17,7 +17,7 @@
 
 - 将串口文本命令转换为经典 CAN 2.0 标准帧、扩展帧和远程帧
 - 将收到的 CAN 帧实时转发到串口
-- 在 Windows 上查看、过滤、批量/周期发送并导出 CAN 报文
+- 在 Windows / Linux 上查看、过滤、批量/周期发送并导出 CAN 报文
 - 发送任务支持每批帧数、间隔、发送次数，以及 CAN ID/数据逐帧递增
 - 查询接收、发送、丢帧、串口错误和 bus-off 恢复计数
 - PC13 作为非阻塞收发活动指示灯，高流量时自然保持点亮
@@ -25,7 +25,7 @@
 - CAN bus-off 自动恢复，UART 接收具备溢出恢复与队列缓冲
 - 固件支持 EIDE、Keil MDK-ARM、CMake + ATfE/Clang 和 CMake + GCC
 
-上电默认参数：CAN `500 kbit/s`，USART1 `115200 8N1`，经典 CAN 单帧最多 `8` 字节。CAN 波特率运行时可改，复位后恢复为 500 kbit/s。
+上电默认参数：CAN `500 kbit/s`，USART1 `921600 8N1`，经典 CAN 单帧最多 `8` 字节。CAN 波特率运行时可改，复位后恢复为 500 kbit/s。
 
 ## 开始使用
 
@@ -83,13 +83,24 @@ python -m venv .venv
 .\.venv\Scripts\python.exe main.py
 ```
 
-选择 USB-UART 对应的 COM 口，UART 波特率保持 `115200`，点击“连接”。状态计数器能正常刷新，说明串口链路已经建立。需要更改总线速率时，在第二行选择 CAN 波特率并点击“应用 CAN 波特率”。
+Linux 源码运行：
+
+```bash
+cd host_app
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python main.py
+```
+
+Linux 打包运行库、串口权限与构建方法见 [上位机说明](host_app/README.md)。Linux 构建命令为 `bash host_app/build_linux.sh`，输出 `host_app/dist/UART-CAN-Host-linux-x64.tar.gz`；解压后运行 `./UART-CAN-Host`。CI 会将 Windows / Linux 构建上传为 Actions artifacts。
+
+选择 USB-UART 对应的 COM 口或 `/dev/ttyUSB*`、`/dev/ttyACM*` 设备，UART 波特率保持 `921600`，点击“连接”。状态计数器能正常刷新，说明串口链路已经建立。需要更改总线速率时，在第二行选择 CAN 波特率并点击“应用 CAN 波特率”。
 
 ## 工作原理
 
 ```mermaid
 flowchart LR
-    PC[Windows 上位机] <-->|115200 8N1| UART[USB-UART]
+    PC[Windows / Linux 上位机] <-->|921600 8N1| UART[USB-UART]
     UART <-->|PA9 / PA10| MCU[STM32F103C6T6 固件]
     MCU <-->|PA12 TX / PA11 RX| PHY[CAN 收发器]
     PHY <-->|CANH / CANL · 所选波特率| BUS[经典 CAN 总线]
@@ -105,8 +116,9 @@ t12381122334455667788\r
 
 ## 上位机功能
 
-- 自动扫描 Windows COM 口
+- 自动扫描 Windows COM 口和 Linux 串口设备
 - 查询并设置设备 CAN 波特率
+- 亮色 / 暗色主题，默认跟随系统，可手动选择并保存
 - 标准帧/扩展帧、数据帧/远程帧显示
 - 按 CAN ID、方向和帧类型过滤
 - 任务式发送：每次 1～100 帧、1～3,600,000 ms 间隔、1～1,000,000 次；第一批立即发送
@@ -140,17 +152,16 @@ cd host_app
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-GitHub Actions 会重复执行 GCC 固件构建以及两组自动测试。
+GitHub Actions 会重复执行 GCC 固件构建、自动测试，以及 Windows / Linux 上位机打包。
 
 ## 已知限制
 
 - 仅支持经典 CAN 2.0，**不支持 CAN FD**
 - CAN 波特率修改只在本次运行中生效，设备复位后恢复为 500 kbit/s
 - 设备协议没有发送 ACK；上位机不能确认报文是否真正出现在总线上
-- 当前只提供 Windows 图形上位机；协议本身可被其他平台串口程序使用
 - 没有时间戳同步，界面时间是上位机收到串口数据的时间
 - 固件使用普通 CAN 模式，测试发送时总线上需要另一个能够 ACK 的正常节点
-- `115200` UART 的带宽低于高负载 CAN 总线的峰值流量；流量过高时可能出现 `UART 丢弃`，上位机不适合作为无损高带宽采集器
+- 文本协议有编码开销，即使 UART 为 `921600`，高负载 CAN 总线的峰值流量仍可能导致 `UART 丢弃`，上位机不适合作为无损高带宽采集器
 
 遇到无法连接、收不到帧、bus-off 或 EIDE 构建问题，请看 [故障排查](docs/TROUBLESHOOTING.md)。
 
@@ -161,7 +172,7 @@ GitHub Actions 会重复执行 GCC 固件构建以及两组自动测试。
 | `Core/` | STM32 固件与 UART-CAN 核心逻辑 |
 | `Drivers/` | 构建所需的 STM32 HAL 与精简 CMSIS 文件 |
 | `MDK-ARM/` | Keil MDK-ARM / µVision 工程 |
-| `host_app/` | PySide6 Windows 上位机与测试 |
+| `host_app/` | PySide6 Windows / Linux 上位机与测试 |
 | `tools/` | 固件测试、独立验证和 Release 打包脚本 |
 | `docs/` | 快速开始、协议、排障和发布检查表 |
 | `.github/` | CI 和问题反馈模板 |

@@ -9,6 +9,7 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyMod
 from PySide6.QtGui import QColor
 
 from .protocol import CanFrame
+from .theme import COLORS
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +28,7 @@ class FrameTableModel(QAbstractTableModel):
         super().__init__(parent)
         self.records: list[FrameRecord] = []
         self.max_records = max_records
+        self._theme = "light"
 
     def rowCount(self, parent=QModelIndex()) -> int:  # noqa: N802
         return 0 if parent.isValid() else len(self.records)
@@ -61,10 +63,17 @@ class FrameTableModel(QAbstractTableModel):
             if index.column() in (0, 2, 3, 4, 5, 6):
                 return Qt.AlignCenter
         if role == Qt.ForegroundRole and index.column() == 2:
-            return QColor("#38bdf8" if record.direction == "RX" else "#fbbf24")
+            return QColor(COLORS[self._theme]["rx" if record.direction == "RX" else "tx"])
         if role == Qt.UserRole:
             return record
         return None
+
+    def set_theme(self, theme: str) -> None:
+        if theme == self._theme:
+            return
+        self._theme = theme
+        if self.records:
+            self.dataChanged.emit(self.index(0, 2), self.index(len(self.records) - 1, 2), [Qt.ForegroundRole])
 
     def append_record(self, record: FrameRecord) -> None:
         if len(self.records) >= self.max_records:

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import errno
 from queue import Empty, Full, Queue
+import sys
 from threading import Event
 
 import serial
@@ -59,7 +61,14 @@ class SerialWorker(QThread):
                     self._consume_bytes(receive_buffer, incoming)
         except (serial.SerialException, OSError) as exc:
             if not self._stop_event.is_set():
-                self.io_error.emit(str(exc))
+                message = str(exc)
+                if sys.platform.startswith("linux") and exc.errno == errno.EACCES:
+                    message = (
+                        f"没有访问串口 {self._port} 的权限。请将当前用户加入设备所属用户组"
+                        "（如 dialout 或 uucp）并重新登录，详见上位机 README。\n"
+                        f"原始错误：{exc}"
+                    )
+                self.io_error.emit(message)
         finally:
             if connection is not None and connection.is_open:
                 try:

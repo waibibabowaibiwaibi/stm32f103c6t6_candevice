@@ -1,4 +1,5 @@
 CompileFlags:
-  Add: []
+  Add: [--sysroot=/usr/lib/arm-none-eabi]
   Remove: []
   CompilationDatabase: ./build/Debug
+  Compiler: clang

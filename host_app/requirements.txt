@@ -1,3 +1,3 @@
-PySide6>=6.8,<7
+# Core, Gui, Widgets and Test are all in Qt's Essentials wheel.
+PySide6-Essentials>=6.8,<7
 pyserial>=3.5,<4
-

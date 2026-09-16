@@ -35,10 +35,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: host_app/requirements.txt
+          cache-dependency-path: host_app/requirements-release.txt
 
       - name: Install host application dependencies
-        run: python -m pip install -r host_app/requirements.txt
+        run: python -m pip install -r host_app/requirements-release.txt
 
       - name: Test host application
         working-directory: host_app
@@ -47,3 +47,67 @@ jobs:
         run: |
           python -m unittest discover -s tests -v
           python main.py --smoke-test
+
+  host-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Linux Qt runtime libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 fonts-noto-cjk
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: host_app/requirements-release.txt
+
+      - name: Build Linux application and package
+        if: runner.os == 'Linux'
+        run: bash host_app/build_linux.sh
+
+      - name: Build Windows application
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./host_app/build_exe.ps1
+
+      - name: Test application
+        working-directory: host_app
+        shell: bash
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            .venv/Scripts/python.exe -m unittest discover -s tests -v
+            dist/UART-CAN-Host.exe --smoke-test
+          else
+            .venv/bin/python -m unittest discover -s tests -v
+          fi
+
+      - name: Upload Linux package
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: UART-CAN-Host-linux-x64
+          path: |
+            host_app/dist/UART-CAN-Host-linux-x64.tar.gz
+            host_app/dist/UART-CAN-Host-linux-x64.tar.gz.sha256
+          if-no-files-found: error
+
+      - name: Upload Windows executable
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: UART-CAN-Host-windows-x64
+          path: host_app/dist/UART-CAN-Host.exe
+          if-no-files-found: error

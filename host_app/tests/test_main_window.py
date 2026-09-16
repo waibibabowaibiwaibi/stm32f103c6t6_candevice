@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+from tempfile import TemporaryDirectory
 import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtTest import QTest  # noqa: E402
+from PySide6.QtCore import QSettings  # noqa: E402
 from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
 from canbridge.main_window import MainWindow  # noqa: E402
@@ -29,7 +32,9 @@ class MainWindowSendTaskTests(unittest.TestCase):
         cls.app = QApplication.instance() or QApplication([])
 
     def setUp(self) -> None:
-        self.window = MainWindow()
+        self.settings_directory = TemporaryDirectory()
+        settings = QSettings(str(Path(self.settings_directory.name) / "settings.ini"), QSettings.IniFormat)
+        self.window = MainWindow(settings=settings)
         self.worker = DummyWorker()
         self.window._worker = self.worker  # noqa: SLF001 - isolated UI test double
         self.window._update_connection_ui(True)  # noqa: SLF001
@@ -41,6 +46,7 @@ class MainWindowSendTaskTests(unittest.TestCase):
         self.window._stop_send_task()  # noqa: SLF001
         self.window._worker = None  # noqa: SLF001
         self.window.close()
+        self.settings_directory.cleanup()
 
     def test_send_task_starts_immediately_and_repeats_requested_times(self) -> None:
         self.window.send_repeat_spin.setValue(3)

@@ -7,7 +7,7 @@ and the standalone [protocol reference](docs/PROTOCOL.md).
 ## Hardware
 - **MCU**: STM32F103C6T6 (32 KB flash, 10 KB RAM)
 - **CAN**: PA11 (RX), PA12 (TX), 500 kbit/s after reset; runtime-selectable from 10 kbit/s to 1 Mbit/s
-- **UART**: PA9 (TX), PA10 (RX) (Baudrate: 115200)
+- **UART**: PA9 (TX), PA10 (RX) (Baudrate: 921600)
 - **Activity/status LED**: PC13, active-low; a 35 ms non-blocking pulse on accepted TX or received CAN frames, solid low in `Error_Handler`
 
 Clock tree: HSE 8 MHz -> PLL x9 -> 72 MHz SYSCLK, APB1 36 MHz.
