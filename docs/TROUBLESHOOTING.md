@@ -69,17 +69,17 @@
 
 ## CMake 找不到工具链
 
-GCC 构建要求 `arm-none-eabi-gcc` 位于 `PATH`，或显式指定前缀：
+Linux / CI 的 GCC 构建要求 `arm-none-eabi-gcc` 位于 `PATH`，或显式指定前缀：
 
-```powershell
-cmake -DTOOLCHAIN_PREFIX=C:/toolchains/gcc-arm-none-eabi/bin/arm-none-eabi- --preset gcc-Release
+```bash
+cmake -DTOOLCHAIN_PREFIX=/opt/gcc-arm-none-eabi/bin/arm-none-eabi- --preset gcc-Release
 ```
 
-ATfE/Clang 构建不包含任何开发者本机路径。请通过 CMake 参数或环境变量指定：
+Linux 的 ATfE/Clang 构建不包含任何开发者本机路径。请通过 CMake 参数或环境变量指定：
 
-```powershell
-cmake -DSTARM_TOOLCHAIN_PATH=C:/toolchains/ATfE/bin `
-      -DGNU_TOOLCHAIN_ROOT=C:/toolchains/GNU-tools-for-STM32 `
+```bash
+cmake -DSTARM_TOOLCHAIN_PATH=/opt/ATfE/bin \
+      -DGNU_TOOLCHAIN_ROOT=/opt/gcc-arm-none-eabi \
       --preset Release
 ```
 

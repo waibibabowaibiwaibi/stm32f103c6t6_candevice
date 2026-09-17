@@ -27,6 +27,7 @@ from canbridge.protocol import CanFrame  # noqa: E402
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--theme", choices=("light", "dark"), default="dark")
+    parser.add_argument("--port-kind", choices=("auto", "windows", "linux"), default="auto")
     parser.add_argument("--output", type=Path, default=PROJECT_ROOT / "docs/images/host-app.png")
     args = parser.parse_args()
     app = QApplication.instance() or QApplication([])
@@ -38,18 +39,20 @@ def main() -> int:
         controller = configure_application(app, settings)
         controller.set_mode(args.theme)
         window = MainWindow(settings=settings)
-        return capture(app, window, args.output)
+        return capture(app, window, args.output, args.port_kind)
 
 
-def capture(app: QApplication, window: MainWindow, output: Path) -> int:
+def capture(app: QApplication, window: MainWindow, output: Path, port_kind: str = "auto") -> int:
 
     window.port_combo.clear()
-    port = "/dev/ttyUSB0" if sys.platform.startswith("linux") else "COM7"
+    use_linux_port = port_kind == "linux" or (port_kind == "auto" and sys.platform.startswith("linux"))
+    port = "/dev/ttyUSB0" if use_linux_port else "COM7"
     window.port_combo.addItem(f"{port} — USB Serial Port（演示）", port)
     window.connection_label.setText("● 已连接（演示）")
     window.connection_label.setObjectName("connected")
     window.connection_label.style().unpolish(window.connection_label)
     window.connection_label.style().polish(window.connection_label)
+    window.baud_combo.setCurrentText("921600")
     window.can_bitrate_combo.setCurrentIndex(window.can_bitrate_combo.findData(500_000))
     window.can_bitrate_label.setText("设备 CAN：500 kbit/s（已生效）")
     window.can_bitrate_button.setEnabled(True)

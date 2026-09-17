@@ -8,7 +8,7 @@
 >
 > “太好了，是f103，我们有救了！”
 
-![UART-CAN 上位机](docs/images/host-app.png)
+![UART-CAN 上位机暗色主题，UART 921600、CAN 500 kbit/s](docs/images/host-app.png)
 
 > [!IMPORTANT]
 > 当前仓库处于 **v0.1.0-beta** 阶段。软件构建与自动测试已经通过，基本收发已在作者的 STM32F103C6T6 + SN65HVD230 实物上验证；发布前仍需完成全波特率、长时间和故障恢复验收。本项目仅用于学习和实验室调试，不适用于安全关键控制；使用者需自行评估连接、数据与操作风险。
@@ -69,9 +69,11 @@ MCU 与 CAN 收发器的典型连接：
 正式发布后，在 [Releases 页面](../../releases/latest)下载：
 
 - `UART-CAN-Host-<version>-windows-x64.exe`：Windows 上位机
+- `UART-CAN-Host-<version>-linux-x64.tar.gz`：Linux x64 上位机压缩包
+- `UART-CAN-Host-<version>-linux-x64.tar.gz.sha256`：Linux 压缩包校验文件
 - `c6t6-<version>.hex`：推荐烧录文件
 - `c6t6-<version>.bin`：从 `0x08000000` 烧录
-- `SHA256SUMS.txt`：文件完整性校验
+- `SHA256SUMS.txt`：Windows 上位机、固件和许可证文件的完整性校验
 - `LICENSE.txt`、`THIRD_PARTY_NOTICES.md` 和厂商许可证：随二进制保留的授权材料
 
 当前还没有 GitHub Release 时，也可以从源码运行上位机：
@@ -130,16 +132,16 @@ t12381122334455667788\r
 
 ## 构建与测试
 
-### GCC 固件构建（推荐用于可复现构建）
+### 跨平台 CMake 固件构建
 
-安装 CMake、Ninja 和 `arm-none-eabi-gcc`，并确保工具位于 `PATH`：
+Linux / CI 推荐安装 CMake、Ninja 和 `arm-none-eabi-gcc`，并确保工具位于 `PATH`：
 
-```powershell
+```bash
 cmake --preset gcc-Release
 cmake --build --preset gcc-Release
 ```
 
-输出位于 `build/gcc-Release/`。ATfE/Clang、EIDE、Keil MDK-ARM 和独立验证脚本的配置见 [固件开发说明](README_Converter.md)。
+Windows 使用 `CMakeUserPresets.json` 保存本机 ATfE、GNU Arm 和 Ninja 路径；VS Code 中只显示“开发调试 (Debug)”和“正式发布 (Release)”两项，输出分别位于 `build/Debug/` 和 `build/Release/`。本机预设模板见[故障排查](docs/TROUBLESHOOTING.md#cmake-找不到工具链)。Linux GCC 输出位于 `build/gcc-Release/`。ATfE/Clang、EIDE、Keil MDK-ARM 和独立验证脚本的详细配置见[固件开发说明](README_Converter.md)。
 
 ### 测试
 

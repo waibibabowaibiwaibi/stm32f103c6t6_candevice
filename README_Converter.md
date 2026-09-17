@@ -81,7 +81,9 @@ terminated with `\r`.
 
 ### CMake
 
-Two toolchains are supported and both are wired into `CMakePresets.json`:
+Two toolchains are supported. The shared presets are available on Linux and in
+CI; Windows keeps machine-specific paths in the ignored `CMakeUserPresets.json`
+so they are never committed:
 
 ```sh
 cmake --preset Release        # ATfE clang (-Os), GNU ld, newlib-nano
@@ -96,6 +98,13 @@ cmake --build --preset gcc-Release
 
 Each build produces `c6t6.elf`, `c6t6.map`, `c6t6.hex` and `c6t6.bin` in
 `build/<preset>/`. Flash the `.hex`, or the `.bin` at `0x08000000`.
+
+On Windows, create the two local presets documented in
+[`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md#cmake-找不到工具链). VS Code
+then presents only **开发调试 (Debug)** and **正式发布 (Release)**. They build to
+`build/Debug/` and `build/Release/`, matching the checked-in clangd and
+IntelliSense compilation-database paths. Use `local-Debug` for ordinary work
+and `local-Release` for an optimized image.
 
 Toolchain locations are discovered from `PATH`, a CMake cache variable, or an
 environment variable. No developer-specific path is built into the project:
@@ -138,14 +147,23 @@ python -m venv .venv
 
 Build the single-file Windows application with `host_app/build_exe.ps1`.
 
+### Linux host application
+
+The same PySide6 application runs on Linux with `/dev/ttyUSB*` and
+`/dev/ttyACM*` devices. Build the executable and `linux-x64`/`linux-arm64`
+tarball with `bash host_app/build_linux.sh`. Runtime libraries, serial-port
+permissions and package compatibility are documented in
+[`host_app/README.md`](host_app/README.md).
+
 ### Measured footprint
 
 | Build | text | data | bss | flash | RAM |
 |---|---|---|---|---|---|
-| gcc-Release (`-Os`) | 11628 | 100 | 2860 | 11728 B (36%) | ~2.9 KB (29%) |
+| gcc-Release (`-Os`) | 13136 | 100 | 2860 | 13236 B (40.39%) | 2952 B (28.83%) |
 
-This row is from the current source. ATfE/EIDE and MDK use different runtime
-libraries, so their exact sizes should be read from their own build reports.
+This row is from the Linux GCC build in CI for commit `fb02d00`. ATfE/EIDE and
+MDK use different runtime libraries, so their exact sizes should be read from
+their own build reports.
 
 ## Tests
 

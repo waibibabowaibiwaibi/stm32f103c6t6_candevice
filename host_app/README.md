@@ -2,7 +2,7 @@
 
 适用于本仓库 STM32F103 UART-CAN 固件的 Windows / Linux 桌面工具。
 
-![上位机界面](../docs/images/host-app.png)
+![上位机暗色主题与 Windows COM 串口，UART 921600、CAN 500 kbit/s](../docs/images/host-app.png)
 
 第一次接线和烧录请从仓库根目录的[五分钟快速开始](../docs/QUICK_START.md)开始。
 
@@ -64,7 +64,14 @@ sudo usermod -aG dialout "$USER"
 
 系统外观由 [Qt QStyleHints](https://doc.qt.io/qt-6/qstylehints.html#colorScheme-prop) 提供。Linux GNOME / KDE 桌面需正常提供主题设置（GNOME 通常通过 `xdg-desktop-portal` 及对应桌面后端）。没有可用的系统偏好时使用亮色，仍可手动切换。
 
-![亮色主题](../docs/images/host-app-light.png)
+![上位机亮色主题与 Linux ttyUSB 串口，UART 921600、CAN 500 kbit/s](../docs/images/host-app-light.png)
+
+更新界面后可从仓库根目录重生成两张文档截图：
+
+```powershell
+.\host_app\.venv\Scripts\python.exe host_app\tools\capture_screenshot.py --theme dark --port-kind windows --output docs\images\host-app.png
+.\host_app\.venv\Scripts\python.exe host_app\tools\capture_screenshot.py --theme light --port-kind linux --output docs\images\host-app-light.png
+```
 
 ## 构建 Windows EXE
 

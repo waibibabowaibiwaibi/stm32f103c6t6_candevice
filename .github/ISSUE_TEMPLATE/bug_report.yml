@@ -1,5 +1,5 @@
 name: Bug 报告
-description: 报告固件、串口协议或 Windows 上位机的问题
+description: 报告固件、串口协议或 Windows / Linux 上位机的问题
 title: "[Bug] "
 labels:
   - bug
@@ -15,6 +15,7 @@ body:
       options:
         - STM32 固件
         - Windows 上位机
+        - Linux 上位机
         - 串口协议
         - 构建或打包
         - 硬件接线

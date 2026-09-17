@@ -234,7 +234,7 @@ void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
   /* The old code toggled PC13 here, which amounts to ~11.5 kHz of pointless
-     GPIO work inside the RX interrupt at 115200 baud.  PC13 is now reserved
+     GPIO work inside the RX interrupt at high UART rates.  PC13 is now reserved
      for real status: Error_Handler() drives it low on a fatal fault. */
 
   /* USER CODE END USART1_IRQn 0 */

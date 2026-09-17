@@ -55,7 +55,7 @@ USB-UART 只负责串口通信。本项目的 STM32F103 固件不是 USB CDC 设
 
 ## 4. 打开上位机
 
-1. Windows 从 Release 下载并运行 `UART-CAN-Host-<version>-windows-x64.exe`；Linux 按[上位机说明](../host_app/README.md#构建与运行-linux-版本)构建或下载 Actions 的 Linux 压缩包，解压后运行 `./UART-CAN-Host`。
+1. Windows 从 Release 下载并运行 `UART-CAN-Host-<version>-windows-x64.exe`；Linux 下载 `UART-CAN-Host-<version>-linux-x64.tar.gz`，校验同名 `.sha256` 后解压运行 `./UART-CAN-Host`，也可按[上位机说明](../host_app/README.md#构建与运行-linux-版本)从源码构建。
 2. Windows 首次运行未签名 EXE 时可能显示 SmartScreen 提示；先用 `SHA256SUMS.txt` 校验文件来自本仓库 Release。
 3. 点击“刷新串口”，选择 USB-UART 对应的 COM 口或 `/dev/ttyUSB*`、`/dev/ttyACM*` 设备。
 4. 保持 `921600` 波特率，点击“连接”。
