@@ -126,9 +126,10 @@ The `.eide` project uses the LLVM_ARM toolchain and builds from the `Core` and
 ### Keil MDK-ARM
 
 Open `MDK-ARM/c6t6.uvprojx` in µVision and build the `c6t6` target. The checked-in
-project targets STM32F103C6 and ARM Compiler 5.06, and references the same
-`Core` and `Drivers` sources as the other builds. Install the STM32F1 Device
-Family Pack and MDK Legacy Compiler Support if they are not already available.
+project targets STM32F103C6 and ARM Compiler 6.24 (ArmClang), and references the
+same `Core` and `Drivers` sources as the other builds. Install the STM32F1 Device
+Family Pack and CMSIS 6.3.0 pack if they are not already available. Legacy ARM
+Compiler 5 support is not required by the checked-in project.
 Generated target output (`MDK-ARM/c6t6/`), listings and per-user µVision state
 are intentionally ignored.
 

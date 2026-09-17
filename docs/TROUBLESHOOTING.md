@@ -63,7 +63,7 @@
 ## Keil MDK-ARM 构建失败
 
 - 打开 `MDK-ARM/c6t6.uvprojx`，目标器件应为 STM32F103C6
-- 当前工程使用 ARM Compiler 5.06；新版 MDK 若未包含它，需要安装 Legacy Compiler Support，或在工程中迁移到已安装的编译器
+- 当前工程使用 ARM Compiler 6.24（ArmClang）和 CMSIS 6.3.0；确认对应编译器与 Pack 已安装，不需要 Legacy Compiler Support
 - 确认已安装 STM32F1 Device Family Pack，且 `Core`、`Drivers` 相对路径没有失效
 - 不要提交或依赖 `MDK-ARM/c6t6/`、`*.lst`、`*.uvguix.*` 等本机生成文件
 

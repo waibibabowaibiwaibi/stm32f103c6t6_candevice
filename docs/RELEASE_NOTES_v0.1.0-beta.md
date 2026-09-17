@@ -15,7 +15,7 @@
 - 发送任务支持停止、CAN ID 递增以及大端数据计数器递增
 - 设备状态计数器、UART 错误恢复和 CAN bus-off 恢复
 - PC13 非阻塞 CAN 收发活动指示
-- EIDE、Keil MDK-ARM、ATfE/Clang CMake 与 GCC CMake 构建支持
+- EIDE、Keil MDK-ARM（ArmClang 6.24）、ATfE/Clang CMake 与 GCC CMake 构建支持
 - 固件逻辑测试、上位机测试和 GitHub Actions
 
 ## 下载

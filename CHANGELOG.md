@@ -15,6 +15,7 @@
 - USART1 固件波特率与上位机默认波特率提高至 `921600 8N1`，同步 CubeMX 配置与使用文档
 - Windows CMake Tools 只显示本机可用的调试与发布预设，Linux / CI 继续使用共享 GCC/Clang 预设
 - 重新生成亮色与暗色上位机截图，并同步跨平台构建、发布说明和问题模板
+- Keil MDK-ARM 工程迁移到 ARM Compiler 6.24（ArmClang）和 CMSIS 6.3.0
 
 ## [0.1.0-beta] - 2026-09-14
 
