@@ -5,6 +5,11 @@
             "name": "base",
             "hidden": true,
             "generator": "Ninja",
+            "condition": {
+                "type": "notEquals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
             "binaryDir": "${sourceDir}/build/${presetName}",
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "TRUE"
@@ -56,9 +61,9 @@
         }
     ],
     "buildPresets": [
-        { "name": "Debug",       "configurePreset": "Debug" },
-        { "name": "Release",     "configurePreset": "Release" },
-        { "name": "gcc-Debug",   "configurePreset": "gcc-Debug" },
-        { "name": "gcc-Release", "configurePreset": "gcc-Release" }
+        { "name": "Debug",       "configurePreset": "Debug", "condition": { "type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows" } },
+        { "name": "Release",     "configurePreset": "Release", "condition": { "type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows" } },
+        { "name": "gcc-Debug",   "configurePreset": "gcc-Debug", "condition": { "type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows" } },
+        { "name": "gcc-Release", "configurePreset": "gcc-Release", "condition": { "type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows" } }
     ]
 }

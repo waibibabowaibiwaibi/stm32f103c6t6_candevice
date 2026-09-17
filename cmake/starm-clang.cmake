@@ -13,6 +13,14 @@ set(CMAKE_CXX_COMPILER_ID Clang)
 #   cmake -DSTARM_TOOLCHAIN_PATH=/opt/ATfE \
 #         -DGNU_TOOLCHAIN_ROOT=/usr -S . -B build
 # ---------------------------------------------------------------------------
+
+# try_compile() re-runs this file in a fresh cache, so the paths supplied
+# via -D would otherwise be lost during compiler ABI checks.
+set(CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
+    STARM_TOOLCHAIN_PATH
+    GNU_TOOLCHAIN_ROOT
+    STARM_TOOLCHAIN_CONFIG)
+
 set(STARM_TOOLCHAIN_PATH "" CACHE PATH "Directory containing the ATfE/Clang executables")
 if(NOT STARM_TOOLCHAIN_PATH)
     if(DEFINED ENV{STARM_TOOLCHAIN_PATH})

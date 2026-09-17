@@ -21,6 +21,7 @@
 # local toolchain overrides
 /.env
 /toolchain.local.cmake
+/CMakeUserPresets.json
 
 # Python host application
 /host_app/.venv

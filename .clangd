@@ -1,5 +1,5 @@
 CompileFlags:
-  Add: [--sysroot=/usr/lib/arm-none-eabi]
-  Remove: []
   CompilationDatabase: ./build/Debug
-  Compiler: clang
+  Add: []
+  Remove: []
+  Compiler: c:\Users\pengc\Documents\ATfE\bin\clang.exe

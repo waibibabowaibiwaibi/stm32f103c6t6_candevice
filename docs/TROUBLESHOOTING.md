@@ -83,6 +83,51 @@ cmake -DSTARM_TOOLCHAIN_PATH=C:/toolchains/ATfE/bin `
       --preset Release
 ```
 
+Windows 上的通用预设默认禁用，避免与本机预设重复显示；Linux 的命令行和 CI 仍使用原有通用预设。Windows 请把本机路径写进不被跟踪的 `CMakeUserPresets.json`（已加入 `.gitignore`），并用 `condition: true` 启用本机预设。日常只需调试和发布两项：
+
+```json
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "local-Debug",
+      "inherits": "Debug",
+      "displayName": "开发调试 (Debug)",
+      "condition": true,
+      "binaryDir": "${sourceDir}/build/Debug",
+      "cacheVariables": {
+        "STARM_TOOLCHAIN_PATH": "<本机>/ATfE/bin",
+        "GNU_TOOLCHAIN_ROOT": "<本机>/gcc-arm-none-eabi",
+        "CMAKE_MAKE_PROGRAM": "<本机>/ninja"
+      }
+    },
+    {
+      "name": "local-Release",
+      "inherits": "local-Debug",
+      "displayName": "正式发布 (Release)",
+      "binaryDir": "${sourceDir}/build/Release",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "local-Debug", "configurePreset": "local-Debug" },
+    { "name": "local-Release", "configurePreset": "local-Release" }
+  ]
+}
+```
+
+配置后执行 `cmake --preset local-Debug` 和 `cmake --build --preset local-Debug`；发布时把名称换成 `local-Release`。上面的 Windows 通用预设命令应相应使用本机预设。需要 GCC 时可创建继承 `gcc-Debug` 或 `gcc-Release` 的本机预设，设置 `condition: true` 和 `TOOLCHAIN_PREFIX`。
+
+调试输出统一放在 `build/Debug`，与仓库 `.clangd` 和 IntelliSense 的编译数据库路径一致。切换配置后请重新运行 CMake 配置和构建，再重启 clangd。
+
+## clangd 报 `'stdio.h' file not found`
+
+- 本质是 clangd 服务器没有拿到 ATfE 自带 runtime 头文件（`lib/clang-runtimes/`）的搜索路径，与代码无关
+- 仓库已在 `.vscode/settings.json` 和 `c6t6.code-workspace` 配置 `--query-driver=**/ATfE/bin/clang*`：无论插件用哪个 clangd（自动下载的官方版或 ATfE 自带版），都会查询工程使用的 ATfE clang 获取系统头文件路径
+- 不要在共享配置里写 `--sysroot` 或本机编译器绝对路径：显式 `--sysroot` 会让 ATfE clang 不再搜索自带 runtime 头文件
+- 想改用 ATfE 自带的 clangd（版本与固件工具链一致）时，在编辑器**用户设置**里配置 `clangd.path`，不要提交到仓库
+- 自检：`clangd --check=Core/Src/main.c`，正常输出 `All checks completed, 0 errors`
+
 ## Windows 拒绝运行上位机
 
 当前测试版本没有代码签名。只从本项目 GitHub Release 下载，并先核对 `SHA256SUMS.txt`。如果仍不信任预编译文件，可以按 `host_app/README.md` 从源码运行或自行构建。

@@ -11,5 +11,8 @@
             "envManager": "ms-python.python:conda",
             "packageManager": "ms-python.python:conda"
         }
+    ],
+    "clangd.arguments": [
+        "--query-driver=**/ATfE/bin/clang*"
     ]
 }

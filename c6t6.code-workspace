@@ -7,7 +7,8 @@
     "settings": {
         "terminal.integrated.shellIntegration.enabled": false,
         "clangd.arguments": [
-            "--header-insertion=never"
+            "--header-insertion=never",
+            "--query-driver=**/ATfE/bin/clang*"
         ],
         "files.autoGuessEncoding": true,
         "C_Cpp.default.configurationProvider": "cl.eide",

@@ -11,6 +11,11 @@ if(NOT DEFINED TOOLCHAIN_PREFIX)
     set(TOOLCHAIN_PREFIX "arm-none-eabi-")
 endif()
 
+# try_compile() re-runs this file in a fresh cache, so the prefix supplied
+# via -D would otherwise be lost during compiler ABI checks.
+set(CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
+    TOOLCHAIN_PREFIX)
+
 if(CMAKE_HOST_WIN32)
     set(TOOLCHAIN_EXECUTABLE_SUFFIX ".exe")
 else()
