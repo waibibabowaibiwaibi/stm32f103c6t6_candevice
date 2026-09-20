@@ -26,7 +26,10 @@
 
 #include "can_bitrate.h"
 #include "can_codec.h"
+#define MSGQUEUE_SLOTS 12
 #include "ringbuf.h"
+#include "usb_device.h"
+#include "usbd_cdc_if.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,19 +41,18 @@
 /* USER CODE BEGIN PD */
 /* Longest legal frame is "T" + 8 hex id + dlc + 16 hex data = 26 characters;
    64 leaves generous room for a host that pads or adds trailing whitespace. */
-#define UART_LINE_MAX 64
-#define UART_LINE_SLOTS 4
+#define BRIDGE_LINE_MAX 64
+#define BRIDGE_LINE_SLOTS MSGQUEUE_SLOTS
 
-#define UART_TX_BUF_SIZE 512
+#define BRIDGE_TX_BUF_SIZE 512
 
-#define CAN_TX_TIMEOUT_MS 10u
-#define CAN_UART_TX_CHUNK 32u
+#define USB_TX_PACKET_SIZE 64u
 /* How often the main loop looks at the controller error state. */
 #define CAN_ERROR_POLL_MS 20u
 /* Back-off between bus-off recovery attempts. */
 #define CAN_RECOVER_INTERVAL_MS 1000u
 /* PC13 is active-low on common STM32F103 "Blue Pill" boards.  Stretch each
-   activity event so it is visible without ever delaying CAN/UART handling. */
+   activity event so it is visible without delaying CAN/USB handling. */
 #define LED_ACTIVITY_HOLD_MS 35u
 /* USER CODE END PD */
 
@@ -62,27 +64,25 @@
 /* Private variables ---------------------------------------------------------*/
 CAN_HandleTypeDef hcan;
 
-UART_HandleTypeDef huart1;
-
 /* USER CODE BEGIN PV */
-/* ---- UART receive: line assembly + published-message queue ---------------- */
-static char uart_line_slots[UART_LINE_SLOTS][UART_LINE_MAX];
-static msgqueue_t uart_rxq;
-static uint16_t uart_rx_idx;   /* bytes assembled into the current slot */
-static uint8_t uart_rx_byte;   /* HAL_UART_Receive_IT landing byte      */
+/* ---- USB CDC receive: line assembly + published-message queue ------------- */
+static char bridge_line_slots[BRIDGE_LINE_SLOTS][BRIDGE_LINE_MAX];
+static msgqueue_t bridge_rxq;
+static uint16_t bridge_rx_idx;
 
-/* ---- UART transmit: ring buffer drained by the main loop ------------------ */
-static uint8_t uart_tx_buf[UART_TX_BUF_SIZE];
-static ring_u8_t uart_txq;
+/* ---- USB CDC transmit: ring buffer drained by the main loop --------------- */
+static uint8_t bridge_tx_buf[BRIDGE_TX_BUF_SIZE];
+static ring_u8_t bridge_txq;
+static uint16_t usb_tx_pending;
 
 /* ---- Counters, readable with the 'V' status command ----------------------- */
-static volatile uint32_t stat_can_rx;      /* frames forwarded CAN -> UART   */
-static volatile uint32_t stat_can_tx;      /* frames accepted UART -> CAN    */
-static volatile uint32_t stat_uart_drop;   /* bytes dropped, UART TX full    */
+static volatile uint32_t stat_can_rx;      /* frames forwarded CAN -> USB    */
+static volatile uint32_t stat_can_tx;      /* frames accepted USB -> CAN     */
+static volatile uint32_t stat_transport_drop; /* bytes dropped, USB TX full */
 static volatile uint32_t stat_cmd_drop;    /* command lines dropped/overflow */
 static volatile uint32_t stat_cmd_bad;     /* malformed command lines        */
 static volatile uint32_t stat_can_tx_drop; /* no free CAN mailbox            */
-static volatile uint32_t stat_uart_err;    /* USART1 error callbacks         */
+static volatile uint32_t stat_transport_err; /* reserved transport errors    */
 static volatile uint32_t stat_can_recover; /* successful bus-off recoveries  */
 
 static uint32_t can_last_error_poll;
@@ -96,17 +96,16 @@ static uint32_t led_activity_deadline;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_USART1_UART_Init(void);
 static void MX_CAN_Init(void);
 /* USER CODE BEGIN PFP */
 static HAL_StatusTypeDef CAN_ApplyFilterConfig(void);
 static HAL_StatusTypeDef CAN_StartWithFilter(void);
 static HAL_StatusTypeDef CAN_ReconfigureBitrate(const can_bitrate_timing_t *timing);
 static void CAN_ServiceErrors(void);
-static void UART_TxService(void);
+static void USB_TxService(void);
 static void HandleCommand(const char *line);
-static void UART_QueueBytes(const char *data, uint16_t len);
-static void UART_ReplyBitrate(void);
+static void Transport_QueueBytes(const char *data, uint16_t len);
+static void Transport_ReplyBitrate(void);
 static void LED_RequestActivity(void);
 static void LED_Service(void);
 /* USER CODE END PFP */
@@ -255,42 +254,55 @@ static void CAN_ServiceErrors(void)
     }
 }
 
-/* Push as much of the CAN->UART backlog out of the door as fits in one go.
-   HAL_UART_Transmit() can return early on timeout, so the read pointer is
-   advanced only when the whole run went out - a short write leaves the
-   remaining bytes queued for the next pass instead of losing them. */
-static void UART_TxService(void)
+/* Submit one full-speed USB packet at a time.  The CDC stack keeps the buffer
+   pointer until the IN transfer completes, so bytes are consumed from the ring
+   only after TxState returns to idle. */
+static void USB_TxService(void)
 {
-    uint16_t run = ring_u8_peek_run(&uart_txq);
+    uint16_t run;
+
+    if (usb_tx_pending != 0u)
+    {
+        if (CDC_TxBusy_FS() != 0u)
+        {
+            return;
+        }
+        ring_u8_consume(&bridge_txq, usb_tx_pending);
+        usb_tx_pending = 0u;
+    }
+
+    run = ring_u8_peek_run(&bridge_txq);
 
     if (run == 0u)
     {
         return;
     }
-    if (run > CAN_UART_TX_CHUNK)
+    if (run > USB_TX_PACKET_SIZE)
     {
-        run = CAN_UART_TX_CHUNK;
+        run = USB_TX_PACKET_SIZE;
     }
 
-    if (HAL_UART_Transmit(&huart1, &uart_tx_buf[uart_txq.tail], run,
-                          CAN_TX_TIMEOUT_MS) == HAL_OK)
+    if (CDC_Transmit_FS(&bridge_tx_buf[bridge_txq.tail], run) == USBD_OK)
     {
-        ring_u8_consume(&uart_txq, run);
+        usb_tx_pending = run;
     }
 }
 
-static void UART_QueueBytes(const char *data, uint16_t len)
+static void Transport_QueueBytes(const char *data, uint16_t len)
 {
     uint16_t i;
+    uint32_t primask = __get_PRIMASK();
 
+    __disable_irq();
     for (i = 0u; i < len; i++)
     {
-        if (!ring_u8_push(&uart_txq, (uint8_t)data[i]))
+        if (!ring_u8_push(&bridge_txq, (uint8_t)data[i]))
         {
-            stat_uart_drop++;
-            return;
+            stat_transport_drop++;
+            break;
         }
     }
+    __set_PRIMASK(primask);
 }
 
 /* Interrupt callbacks only set a byte flag.  The main loop performs the GPIO
@@ -320,7 +332,7 @@ static void LED_Service(void)
     }
 }
 
-static void UART_ReplyBitrate(void)
+static void Transport_ReplyBitrate(void)
 {
     char reply[20];
     const can_bitrate_timing_t *active = can_active_bitrate;
@@ -333,7 +345,7 @@ static void UART_ReplyBitrate(void)
     n = snprintf(reply, sizeof reply, "S %lu\r", (unsigned long)active->bitrate);
     if (n > 0)
     {
-        UART_QueueBytes(reply, (uint16_t)n);
+        Transport_QueueBytes(reply, (uint16_t)n);
     }
 }
 
@@ -347,25 +359,25 @@ static void HandleCommand(const char *line)
     bitrate_command = can_bitrate_parse_command(line, &requested_bitrate);
     if (bitrate_command == CAN_BITRATE_CMD_QUERY)
     {
-        UART_ReplyBitrate();
+        Transport_ReplyBitrate();
         return;
     }
     if (bitrate_command == CAN_BITRATE_CMD_SET)
     {
         if (CAN_ReconfigureBitrate(requested_bitrate) == HAL_OK)
         {
-            UART_ReplyBitrate();
+            Transport_ReplyBitrate();
         }
         else
         {
-            UART_QueueBytes("E S\r", 4u);
+            Transport_QueueBytes("E S\r", 4u);
         }
         return;
     }
     if (bitrate_command == CAN_BITRATE_CMD_INVALID)
     {
         stat_cmd_bad++;
-        UART_QueueBytes("E S\r", 4u);
+        Transport_QueueBytes("E S\r", 4u);
         return;
     }
 
@@ -377,15 +389,15 @@ static void HandleCommand(const char *line)
         int n = snprintf(reply, sizeof reply, "V %lu %lu %lu %lu %lu %lu %lu %lu\r",
                          (unsigned long)stat_can_rx,
                          (unsigned long)stat_can_tx,
-                         (unsigned long)stat_uart_drop,
+                         (unsigned long)stat_transport_drop,
                          (unsigned long)stat_cmd_drop,
                          (unsigned long)stat_cmd_bad,
                          (unsigned long)stat_can_tx_drop,
-                         (unsigned long)stat_uart_err,
+                         (unsigned long)stat_transport_err,
                          (unsigned long)stat_can_recover);
         if (n > 0)
         {
-            UART_QueueBytes(reply, (uint16_t)n);
+            Transport_QueueBytes(reply, (uint16_t)n);
         }
         return;
     }
@@ -463,11 +475,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART1_UART_Init();
   MX_CAN_Init();
   /* USER CODE BEGIN 2 */
-    msgqueue_init(&uart_rxq, &uart_line_slots[0][0], UART_LINE_MAX);
-    ring_u8_init(&uart_txq, uart_tx_buf, UART_TX_BUF_SIZE);
+    msgqueue_init(&bridge_rxq, &bridge_line_slots[0][0], BRIDGE_LINE_MAX);
+    ring_u8_init(&bridge_txq, bridge_tx_buf, BRIDGE_TX_BUF_SIZE);
     can_active_bitrate = can_bitrate_default();
 
     if (CAN_StartWithFilter() != HAL_OK)
@@ -475,10 +486,7 @@ int main(void)
         Error_Handler();
     }
 
-    if (HAL_UART_Receive_IT(&huart1, &uart_rx_byte, 1) != HAL_OK)
-    {
-        Error_Handler();
-    }
+    MX_USB_DEVICE_Init();
 
     can_last_error_poll = HAL_GetTick();
 
@@ -487,19 +495,19 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
     while (1) {
-        /* CAN -> UART backlog */
-        UART_TxService();
+        /* CAN -> USB CDC backlog */
+        USB_TxService();
 
         /* Recover the controller if it fell off the bus */
         CAN_ServiceErrors();
 
-        /* UART -> CAN: handle every complete command line that is waiting */
+        /* USB CDC -> CAN: handle every complete command line that is waiting */
         {
-            const char *line = msgqueue_read_slot(&uart_rxq);
+            const char *line = msgqueue_read_slot(&bridge_rxq);
             if (line != NULL)
             {
                 HandleCommand(line);
-                msgqueue_release(&uart_rxq);
+                msgqueue_release(&bridge_rxq);
             }
         }
 
@@ -519,6 +527,7 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -545,6 +554,14 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* USB Full Speed requires an exact 48 MHz clock: 72 MHz PLL / 1.5. */
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB;
+  PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
   }
@@ -588,39 +605,6 @@ static void MX_CAN_Init(void)
 }
 
 /**
-  * @brief USART1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART1_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART1_Init 0 */
-
-  /* USER CODE END USART1_Init 0 */
-
-  /* USER CODE BEGIN USART1_Init 1 */
-
-  /* USER CODE END USART1_Init 1 */
-  huart1.Instance = USART1;
-  huart1.Init.BaudRate = 921600;
-  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-  huart1.Init.StopBits = UART_STOPBITS_1;
-  huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
-  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART1_Init 2 */
-
-  /* USER CODE END USART1_Init 2 */
-
-}
-
-/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -655,98 +639,50 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /**
-  * @brief  USART1 error recovery.
+  * @brief  Feed bytes received by the USB CDC OUT endpoint into the existing
+  *         line-oriented CAN protocol parser.
   *
-  * An overrun (ORE) is a *blocking* error for the HAL: it disables the RX
-  * interrupts and leaves the receiver needing an explicit restart.  The ORE
-  * flag is only cleared by reading SR followed by DR.  Re-arming the reception
-  * without doing that leaves ORE set, so the very next RXNE interrupt takes the
-  * error path again - an interrupt storm that starves the main loop and
-  * permanently kills reception.  That is what this function exists to prevent.
+  * The slot is fully written and NUL-terminated before msgqueue_publish()
+  * makes it visible, so the main loop cannot observe a partial command.
   */
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+void Bridge_ReceiveBytes(const uint8_t *data, uint32_t len)
 {
-    if (huart->Instance != USART1)
+    uint32_t i;
+
+    for (i = 0u; i < len; i++)
     {
-        return;
-    }
-
-    stat_uart_err++;
-
-    if ((huart->ErrorCode & (HAL_UART_ERROR_ORE | HAL_UART_ERROR_FE |
-                             HAL_UART_ERROR_NE | HAL_UART_ERROR_PE)) != 0u)
-    {
-        /* Reading SR then DR is the documented ORE clear sequence. */
-        (void)huart->Instance->SR;
-        (void)huart->Instance->DR;
-
-        /* Drop the partially assembled line: its bytes are not trustworthy. */
-        uart_rx_idx = 0u;
-    }
-
-    (void)HAL_UART_AbortReceive(huart);
-
-    huart->ErrorCode = HAL_UART_ERROR_NONE;
-    huart->RxState = HAL_UART_STATE_READY;
-    huart->ReceptionType = HAL_UART_RECEPTION_STANDARD;
-
-    if (HAL_UART_Receive_IT(&huart1, &uart_rx_byte, 1) != HAL_OK)
-    {
-        /* The HAL refused to restart the reception.  Record it so the 'V'
-           status readout makes the failure visible. */
-        huart->ErrorCode = HAL_UART_ERROR_ORE;
-        stat_uart_err++;
-    }
-}
-
-/**
-  * @brief  USART1 byte received.  Assembles one command line, then publishes it
-  *         to the queue.
-  *
-  * The slot is fully written and NUL-terminated *before* msgqueue_publish()
-  * makes it visible, so the main loop can never observe a half-written line.
-  */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if (huart->Instance == USART1)
-    {
-        uint8_t b = uart_rx_byte;
+        uint8_t b = data[i];
 
         if (b == '\r' || b == '\n')
         {
-            if (uart_rx_idx > 0u)
+            if (bridge_rx_idx > 0u)
             {
-                if (msgqueue_has_room(&uart_rxq))
+                if (msgqueue_has_room(&bridge_rxq))
                 {
-                    msgqueue_write_slot(&uart_rxq)[uart_rx_idx] = '\0';
-                    msgqueue_publish(&uart_rxq);
+                    msgqueue_write_slot(&bridge_rxq)[bridge_rx_idx] = '\0';
+                    msgqueue_publish(&bridge_rxq);
                 }
                 else
                 {
-                    /* Every slot is still waiting to be handled. */
                     stat_cmd_drop++;
                 }
-                uart_rx_idx = 0u;
+                bridge_rx_idx = 0u;
             }
         }
-        else if (uart_rx_idx < (UART_LINE_MAX - 1u))
+        else if (bridge_rx_idx < (BRIDGE_LINE_MAX - 1u))
         {
-            msgqueue_write_slot(&uart_rxq)[uart_rx_idx++] = (char)b;
+            msgqueue_write_slot(&bridge_rxq)[bridge_rx_idx++] = (char)b;
         }
         else
         {
-            /* Longer than any legal frame: resynchronise on the next
-               terminator instead of silently wrapping. */
             stat_cmd_drop++;
-            uart_rx_idx = 0u;
+            bridge_rx_idx = 0u;
         }
-
-        (void)HAL_UART_Receive_IT(&huart1, &uart_rx_byte, 1);
     }
 }
 
 /**
-  * @brief  CAN frame received in FIFO0: forward it to the UART as ASCII.
+  * @brief  CAN frame received in FIFO0: forward it over USB CDC as ASCII.
   */
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
@@ -779,16 +715,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
     len = can_encode(msg, &frame);
 
-    for (i = 0u; i < len; i++)
-    {
-        if (!ring_u8_push(&uart_txq, (uint8_t)msg[i]))
-        {
-            /* Host is not draining fast enough; the rest of this frame is
-               lost.  Counted so the 'V' status command can expose it. */
-            stat_uart_drop++;
-            break;
-        }
-    }
+    Transport_QueueBytes(msg, len);
     stat_can_rx++;
 }
 

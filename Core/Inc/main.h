@@ -53,6 +53,7 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+void Bridge_ReceiveBytes(const uint8_t *data, uint32_t len);
 
 /* USER CODE END EFP */
 

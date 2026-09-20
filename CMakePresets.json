@@ -45,7 +45,7 @@
         },
         {
             "name": "gcc-Debug",
-            "displayName": "Debug (arm-none-eabi-gcc, -O0)",
+            "displayName": "Debug (arm-none-eabi-gcc, -Og)",
             "inherits": "gcc",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"

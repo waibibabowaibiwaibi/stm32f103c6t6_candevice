@@ -1,5 +1,8 @@
 # 故障排查
 
+> [!WARNING]
+> 本页大部分内容面向主分支的外置 USB-UART 固件。当前 native USB 初稿分支的接线与限制见[板载 USB 初稿说明](NATIVE_USB_PROTOTYPE.md)。
+
 建议按“电脑串口 → MCU 固件 → CAN 收发器 → 总线”的顺序检查，不要同时更换多个变量。
 
 ## 上位机找不到串口

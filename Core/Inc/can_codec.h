@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  * @file    can_codec.h
- * @brief   SLCAN-style ASCII frame encode/decode for the UART<->CAN bridge.
+ * @brief   SLCAN-style ASCII frame encode/decode for the USB<->CAN bridge.
  *
  * Wire format (see README_Converter.md):
  *   standard : 't' III L DD..      III = 3 hex ID digits, L = 1 decimal DLC

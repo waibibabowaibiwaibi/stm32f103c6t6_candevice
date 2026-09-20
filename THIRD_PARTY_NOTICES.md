@@ -9,6 +9,13 @@ The MIT license in the repository root applies only to the original UART-CAN Bri
 - License: the package license when distributed as part of that package; otherwise BSD-3-Clause as stated by the included notice
 - Included notice: [`Drivers/STM32F1xx_HAL_Driver/LICENSE.txt`](Drivers/STM32F1xx_HAL_Driver/LICENSE.txt)
 
+## STM32 USB Device Library
+
+- Location: `Middlewares/ST/STM32_USB_Device_Library/`
+- Upstream: STMicroelectronics STM32 USB Device Library v2.5.3, as used by STM32CubeF1 v1.8.7
+- License: ST's license included with the component
+- Included notice: [`Middlewares/ST/STM32_USB_Device_Library/License.md`](Middlewares/ST/STM32_USB_Device_Library/License.md)
+
 ## CMSIS core headers
 
 - Location: `Drivers/CMSIS/Include/`

@@ -4,8 +4,8 @@
  * @brief   Single-producer / single-consumer ring buffer.
  *
  * One writer and one reader only, which is exactly the pattern used here:
- *   - the CAN RX interrupt writes into the UART TX ring
- *   - the USART1 interrupt writes into the RX ring
+ *   - the CAN RX interrupt writes into the USB TX ring
+ *   - the USB receive callback writes into the command queue
  *   - the main loop reads both
  *
  * Each index has a single writer, so no locking is required beyond the fact
@@ -76,7 +76,7 @@ static inline int ring_u8_pop(ring_u8_t *r, uint8_t *out)
 }
 
 /* Contiguous run available for a single read, starting at tail.  Lets the
-   consumer hand the UART a pointer instead of copying byte by byte. */
+   consumer hand USB CDC a pointer instead of copying byte by byte. */
 static inline uint16_t ring_u8_peek_run(const ring_u8_t *r)
 {
     if (r->head >= r->tail)
@@ -93,7 +93,7 @@ static inline void ring_u8_consume(ring_u8_t *r, uint16_t n)
 }
 
 /* --------------------------------------------------------------------------
- * Fixed-slot message queue (used for complete UART command lines)
+ * Fixed-slot message queue (used for complete transport command lines)
  *
  * `head` and `tail` are slot indices in [0, slots).  Occupancy is derived from
  * them.  A message is only published by advancing `head` *after* the whole

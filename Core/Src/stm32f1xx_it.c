@@ -56,7 +56,7 @@
 
 /* External variables --------------------------------------------------------*/
 extern CAN_HandleTypeDef hcan;
-extern UART_HandleTypeDef huart1;
+extern PCD_HandleTypeDef hpcd;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -207,6 +207,10 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
   /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 0 */
 
   /* USER CODE END USB_LP_CAN1_RX0_IRQn 0 */
+  if (hpcd.Instance == USB)
+  {
+    HAL_PCD_IRQHandler(&hpcd);
+  }
   HAL_CAN_IRQHandler(&hcan);
   /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 1 */
 
@@ -225,23 +229,6 @@ void CAN1_RX1_IRQHandler(void)
   /* USER CODE BEGIN CAN1_RX1_IRQn 1 */
 
   /* USER CODE END CAN1_RX1_IRQn 1 */
-}
-
-/**
-  * @brief This function handles USART1 global interrupt.
-  */
-void USART1_IRQHandler(void)
-{
-  /* USER CODE BEGIN USART1_IRQn 0 */
-  /* The old code toggled PC13 here, which amounts to ~11.5 kHz of pointless
-     GPIO work inside the RX interrupt at high UART rates.  PC13 is now reserved
-     for real status: Error_Handler() drives it low on a fatal fault. */
-
-  /* USER CODE END USART1_IRQn 0 */
-  HAL_UART_IRQHandler(&huart1);
-  /* USER CODE BEGIN USART1_IRQn 1 */
-
-  /* USER CODE END USART1_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
