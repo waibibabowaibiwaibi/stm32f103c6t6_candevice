@@ -23,7 +23,7 @@
 - PC13 作为非阻塞收发活动指示灯，高流量时自然保持点亮
 - 从上位机切换 CAN 波特率：10 / 20 / 50 / 100 / 125 / 250 / 500 / 800 / 1000 kbit/s
 - CAN bus-off 自动恢复，USB CDC 收发使用非阻塞队列
-- 当前初稿已接入 CMake + ATfE/Clang 和 CMake + GCC；EIDE / Keil 工程尚未同步 USB 源文件
+- 固件工程已同步支持 CMake + ATfE/Clang、CMake + GCC、EIDE 和 Keil MDK-ARM
 
 上电默认参数：CAN `500 kbit/s`，经典 CAN 单帧最多 `8` 字节。USB CDC 控制面板里显示的串口波特率只是兼容字段，不改变 USB 传输速度。CAN 波特率运行时可改，复位后恢复为 500 kbit/s。
 

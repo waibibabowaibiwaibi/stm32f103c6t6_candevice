@@ -6,6 +6,8 @@ packDir: .pack/Keil/STM32F1xx_DFP.2.3.0
 srcDirs:
   - Core
   - Drivers
+  - Middlewares/ST/STM32_USB_Device_Library
+  - USB_DEVICE
 virtualFolder:
   name: <virtual_root>
   files:
@@ -25,11 +27,17 @@ targets:
         - .
         - Core/Inc
         - Drivers/STM32F1xx_HAL_Driver/Inc
+        - Drivers/STM32F1xx_HAL_Driver/Inc/Legacy
         - Drivers/CMSIS/Include
         - Drivers/CMSIS/Device/ST/STM32F1xx/Include
+        - USB_DEVICE/App
+        - USB_DEVICE/Target
+        - Middlewares/ST/STM32_USB_Device_Library/Core/Inc
+        - Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc
       libList: []
     excludeList:
       - Drivers/CMSIS
+      - Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c
     settings:
       debugger: cortex-debug
     toolchain: LLVM_ARM

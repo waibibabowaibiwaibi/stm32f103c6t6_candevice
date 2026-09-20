@@ -1,4 +1,4 @@
-# STM32 UART-CAN Converter — firmware development notes
+# STM32 native USB-CAN converter — firmware development notes
 
 This is the detailed firmware/build reference. New users should start with the
 [main README](README.md), the [five-minute quick start](docs/QUICK_START.md),
@@ -6,11 +6,13 @@ and the standalone [protocol reference](docs/PROTOCOL.md).
 
 ## Hardware
 - **MCU**: STM32F103C6T6 (32 KB flash, 10 KB RAM)
-- **CAN**: PA11 (RX), PA12 (TX), 500 kbit/s after reset; runtime-selectable from 10 kbit/s to 1 Mbit/s
-- **UART**: PA9 (TX), PA10 (RX) (Baudrate: 921600)
+- **CAN**: PB8 (RX), PB9 (TX), 500 kbit/s after reset; runtime-selectable from 10 kbit/s to 1 Mbit/s
+- **USB device**: PA11 (D-), PA12 (D+), CDC ACM virtual serial port
 - **Activity/status LED**: PC13, active-low; a 35 ms non-blocking pulse on accepted TX or received CAN frames, solid low in `Error_Handler`
 
-Clock tree: HSE 8 MHz -> PLL x9 -> 72 MHz SYSCLK, APB1 36 MHz.
+Clock tree: HSE 8 MHz -> PLL x9 -> 72 MHz SYSCLK, APB1 36 MHz. USB uses
+the PLL clock divided by 1.5 to obtain 48 MHz. CAN1 uses AFIO remap 2 so that
+PA11/PA12 remain available to USB.
 Default CAN bit timing: `36 MHz / Prescaler(4) / (1 + TS1(15) + TS2(2)) = 500 kbit/s`,
 sample point 88.9%. `Core/Src/can_bitrate.c` contains the exact timing table for
 all nine supported rates; its host-side test verifies every divisor against the
@@ -20,7 +22,7 @@ all nine supported rates; its host-side test verifies every divisor against the
 
 The device uses a text-based protocol similar to SLCAN.
 
-### Sending CAN Messages (UART -> CAN)
+### Sending CAN Messages (USB CDC -> CAN)
 
 - **Standard Frame**: `tIIILDD...`
   - `t`: Identifier for Standard Frame
@@ -48,13 +50,13 @@ The device uses a text-based protocol similar to SLCAN.
 
   | field | meaning |
   |---|---|
-  | `can_rx` | frames forwarded CAN -> UART |
-  | `can_tx` | frames accepted UART -> CAN |
-  | `uart_drop` | bytes/frames dropped because the UART TX ring was full |
+  | `can_rx` | frames forwarded CAN -> USB CDC |
+  | `can_tx` | frames accepted USB CDC -> CAN |
+  | `uart_drop` | bytes/frames dropped because the USB TX ring was full; legacy field name retained for host compatibility |
   | `cmd_drop` | command lines dropped or too long |
   | `cmd_bad` | command lines that were frames but malformed |
   | `can_tx_drop` | frames dropped because all 3 CAN mailboxes were busy |
-  | `uart_err` | USART1 error recoveries |
+  | `uart_err` | reserved transport-error counter; legacy field name retained for host compatibility |
   | `can_recover` | successful CAN bus-off recoveries |
 
 - **CAN bit rate**: send `S?` to query the active rate, or `S0` through `S8`
@@ -72,7 +74,7 @@ in `cmd_bad` and otherwise ignored. Malformed `S` commands return `E S` and
 increment `cmd_bad`; other input that is neither a frame nor a device command
 is ignored silently.
 
-### Receiving CAN Messages (CAN -> UART)
+### Receiving CAN Messages (CAN -> USB CDC)
 
 The device outputs received CAN messages in the same format as above,
 terminated with `\r`.
@@ -120,16 +122,19 @@ For the GCC presets, `arm-none-eabi-*` must be on `PATH`, or pass
 
 ### EIDE
 
-The `.eide` project uses the LLVM_ARM toolchain and builds from the `Core` and
-`Drivers` trees.
+The `.eide` project uses the LLVM_ARM toolchain. Its source set includes
+`Core`, the required HAL/LL drivers, `USB_DEVICE`, and the ST USB Device CDC
+middleware. The obsolete UART HAL source is excluded. Open the repository in
+EIDE and build the `Debug` target.
 
 ### Keil MDK-ARM
 
 Open `MDK-ARM/c6t6.uvprojx` in µVision and build the `c6t6` target. The checked-in
-project targets STM32F103C6 and ARM Compiler 6.24 (ArmClang), and references the
-same `Core` and `Drivers` sources as the other builds. Install the STM32F1 Device
-Family Pack and CMSIS 6.3.0 pack if they are not already available. Legacy ARM
-Compiler 5 support is not required by the checked-in project.
+project targets STM32F103C6 and ARM Compiler 6.24 (ArmClang), and includes the
+same application, HAL/LL, USB Device and CDC middleware sources as the CMake
+build. Install the STM32F1 Device Family Pack and CMSIS 6.3.0 pack if they are
+not already available. Legacy ARM Compiler 5 support is not required by the
+checked-in project.
 Generated target output (`MDK-ARM/c6t6/`), listings and per-user µVision state
 are intentionally ignored.
 
@@ -160,11 +165,11 @@ permissions and package compatibility are documented in
 
 | Build | text | data | bss | flash | RAM |
 |---|---|---|---|---|---|
-| gcc-Release (`-Os`) | 13136 | 100 | 2860 | 13236 B (40.39%) | 2952 B (28.83%) |
+| gcc-Release (`-Os`) | 19264 | 476 | 5620 | 19740 B (60.24%) | 6096 B (59.53%) |
 
-This row is from the Linux GCC build in CI for commit `fb02d00`. ATfE/EIDE and
-MDK use different runtime libraries, so their exact sizes should be read from
-their own build reports.
+This row is from the native USB prototype's local GCC release build. ATfE/EIDE
+and MDK use different runtime libraries, so their exact sizes should be read
+from their own build reports.
 
 ## Tests
 
@@ -191,22 +196,18 @@ Defects fixed here, worth not regressing:
   wrote `can_tx_data[8]` and clobbered the adjacent `can_rx_data` buffer. All
   bounds are now enforced in `can_decode()` before any byte is copied.
 
-- **UART overrun recovery.** `HAL_UART_ErrorCallback` used to re-arm the
-  reception without clearing the ORE flag. Because ORE is a *blocking* error
-  for the HAL, the flag stayed set and every subsequent RXNE interrupt took the
-  error path again - an interrupt storm that starved the main loop and
-  permanently killed reception. The callback now performs the documented
-  SR-then-DR clear, calls `HAL_UART_AbortReceive()` and restarts cleanly.
+- **USB receive buffering.** The CDC receive callback feeds complete bytes into
+  the existing line parser and command queue, then immediately rearms the OUT
+  endpoint. Commands may use either `\r` or `\n` terminators.
 
-- **UART receive buffering.** The old ping-pong A/B buffer dropped every byte
-  that arrived while a message was pending, and could hand the main loop a
-  buffer the ISR would go on to reuse. Reception now assembles a line in a slot
-  and publishes it only once it is complete and NUL-terminated, through a
-  4-deep message queue (`ringbuf.h`).
+- **USB transmit buffering.** CAN callbacks and command handling append output
+  to a 512-byte ring. The main loop starts one CDC IN transfer at a time and
+  removes data only after the class driver accepts it, so a busy endpoint does
+  not block CAN interrupt handling.
 
-- **UART transmit short writes.** `HAL_UART_Transmit()` can return early on
-  timeout. The read pointer is now advanced only on success, so a short write
-  keeps the remaining bytes queued instead of discarding them.
+- **Shared USB/CAN interrupt.** On STM32F103, USB low priority and CAN RX FIFO0
+  share `USB_LP_CAN1_RX0_IRQn`. The handler services both the PCD and CAN HAL
+  paths so neither peripheral loses its interrupt source.
 
 - **CAN bus-off recovery.** With `AutoBusOff` disabled and no recovery logic,
   the node went permanently silent after a bus fault. `CAN_ServiceErrors()` now
