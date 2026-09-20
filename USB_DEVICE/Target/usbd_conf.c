@@ -47,10 +47,23 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef * hpcd)
   /* Enable the GPIOA clock */
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
-  /* Configure USB DM/DP pins */
+  /* Boards with a permanently fitted D+ pull-up appear connected before the
+     firmware is ready.  Hold D+ low briefly so the host observes a clean
+     disconnect, then release it before starting the USB peripheral. */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);
+  GPIO_InitStruct.Pin = GPIO_PIN_12;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_Delay(20u);
+
+  /* USB owns PA11/PA12 while the peripheral is enabled.  Keep the GPIO pulls
+     disabled: full-speed attach requires the board's external 1.5 kOhm pull-up
+     on D+ only; pulling D- high can break reset and descriptor transfers. */
   GPIO_InitStruct.Pin = (GPIO_PIN_11 | GPIO_PIN_12);
   GPIO_InitStruct.Mode = GPIO_MODE_AF_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 

@@ -481,12 +481,15 @@ int main(void)
     ring_u8_init(&bridge_txq, bridge_tx_buf, BRIDGE_TX_BUF_SIZE);
     can_active_bitrate = can_bitrate_default();
 
+    /* Bring up USB before enabling CAN error notifications on their shared
+       interrupt vector.  This keeps enumeration deterministic even when CAN_RX
+       is floating or the transceiver is not connected during a USB-only test. */
+    MX_USB_DEVICE_Init();
+
     if (CAN_StartWithFilter() != HAL_OK)
     {
         Error_Handler();
     }
-
-    MX_USB_DEVICE_Init();
 
     can_last_error_poll = HAL_GetTick();
 
