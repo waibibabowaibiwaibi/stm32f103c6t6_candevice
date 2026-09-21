@@ -1,55 +1,54 @@
-# 板载 USB-CAN 初稿
+# 板载 USB-CAN 实验报告
 
-这个分支验证一条改动较小的路线：STM32F103C6T6 直接通过板载 USB 枚举为 CDC ACM 虚拟串口，继续承载仓库原有的 ASCII CAN 协议。现有上位机仍通过串口 API 工作，因此 Windows 和 Linux 端暂时不需要换一套协议实现。
+## 结论
 
-## 接线变化
+STM32F103C6T6 的片上 USB 与 bxCAN 共用 512 字节专用 SRAM，不能同时运行。因此本板不能通过固件变成 USB-CAN 转换器；CDC、`gs_usb` 或 PCAN 协议都无法绕过这项硬件限制。
 
-| 功能 | MCU 引脚 | 说明 |
-|---|---|---|
-| USB D- | PA11 | 连接板载 USB D- |
-| USB D+ | PA12 | 连接板载 USB D+ |
-| CAN RX | PB8 | 连接 CAN 收发器 RXD |
-| CAN TX | PB9 | 连接 CAN 收发器 TXD |
-| CAN 总线 | CANH / CANL | 必须经过 CAN 收发器 |
+ST 的 [RM0008 参考手册](https://www.st.com/resource/en/reference_manual/rm0008-stm32f103xx-advanced-armbased-32bit-mcus-stmicroelectronics.pdf)在 bxCAN 章节明确说明，低密度、中密度、高密度和 XL 密度 STM32F103 的 USB 与 CAN 共享专用 SRAM，二者只能分时使用。[AN4879 USB 硬件指南](https://www.st.com/resource/en/application_note/an4879-usb-hardware-design-guidelines-for-stm32-microcontrollers-stmicroelectronics.pdf)也在 STM32F102/F103 的 USB 缓冲区说明中记录了相同限制。
 
-CAN1 使用 AFIO remap 2，从默认 PA11/PA12 移到 PB8/PB9。USB 使用 72 MHz PLL 除以 1.5 得到严格的 48 MHz 时钟。USB 低优先级中断和 CAN RX FIFO0 在 STM32F103 上共用 `USB_LP_CAN1_RX0_IRQn`，中断入口会依次调用 PCD 和 CAN HAL 处理函数。
+## 为什么改到 PB8/PB9 也不行
 
-## 当前能做什么
+CAN1 remap 2 把 CAN_RX/CAN_TX 从 PA11/PA12 移到 PB8/PB9，确实释放了 USB D-/D+ 引脚，但这只解决封装引脚复用。USB 控制器和 bxCAN 控制器内部仍访问同一块 512 字节 SRAM。
 
-- 枚举为 USB CDC 虚拟串口。
-- 继续解析原有 `t`、`T`、`r`、`R`、`S`、`V` 命令。
-- 在 USB CDC 和经典 CAN 之间双向转发。
-- 保留 CAN 波特率切换、bus-off 恢复和 PC13 活动灯。
-- 使用同一套 CMake 工程在 Windows 本机和 Linux CI 构建。
+一个 USB-CAN 桥必须同时保持 USB 枚举并实时收发 CAN。分时关闭一个外设再打开另一个外设无法完成桥接。
 
-## 这不是 PCAN
+## 实板排查证据
 
-PCAN-View 和 PCAN-Basic 期望 PEAK 的设备协议、驱动配合及合法的设备标识。这个初稿不会冒充 PEAK 的 VID/PID，也没有复制其私有协议。它在操作系统里表现为普通串口，现有上位机可以直接连接。
+测试环境：
 
-若目标是 Linux 原生 SocketCAN，下一阶段更适合实现公开的 `gs_usb` 协议。若目标是让 PCAN-View 直接识别，则需要先确认 PEAK 是否提供可合法实现的开放设备协议和标识授权；在此之前不应把固件伪装成 PCAN 硬件。
+- STM32F103C6T6，设备 ID `0x412`，32 KiB Flash、10 KiB RAM
+- 8 MHz 外部晶振，SYSCLK 72 MHz，USB 时钟 48 MHz
+- CMSIS-DAP + OpenOCD SWD 调试
+- Windows USB 主机
+- CubeMX USB Device CDC 中间件
 
-## 验证步骤
+同时启用 CAN 与 USB 时：
 
-1. 用 GCC 或 ATfE/Clang 构建并烧录 `c6t6.hex`。
-2. 插入板载 USB，确认 Windows 出现新的 COM 口，或 Linux 出现 `/dev/ttyACM*`。
-3. 在上位机选择该端口并连接。波特率字段可保持 `921600`，CDC 固件会接受该设置但不会据此改变 USB 速度。
-4. 发送 `V\r`，应收到八个状态计数值。
-5. 连接带正确终端电阻和另一 ACK 节点的 CAN 总线，再验证标准帧、扩展帧和远程帧双向收发。
+1. Windows 检测到全速 USB 上拉，但枚举为 `USB\VID_0000&PID_0002`，问题代码 43。
+2. USB 总线复位已经到达 MCU，D+/D- 线状态和 USB 时钟正常。
+3. 主机的第一个 SETUP 包触发 `HAL_PCD_SetupStageCallback()`。
+4. EP0 OUT 结构配置为 PMA `0x18`，EP0 IN 配置为 PMA `0x58`，但 PMA 缓冲区描述表、SETUP 长度和数据均读回 0。
+5. 因为 MCU 无法取得 `GET_DESCRIPTOR` 请求，控制 IN 阶段从未完成，Windows 最终报告设备描述符失败。
 
-## 初稿限制
+随后用同一份 USB 固件停用并反初始化 CAN：
 
-- 尚未在目标板上验证 USB 枚举和长时间 CAN 压力测试。
-- USB 描述符暂用 ST CDC 示例的 `0483:5740`，只适合开发验证；正式分发前要换成项目有权使用的 VID/PID。
-- 常见 Blue Pill 类板子的 D+ 上拉电阻可能不符合 USB 规范，若无法枚举，需要先检查原理图和实物阻值。
-- 该分支修改了引脚，原来接在 PA11/PA12 的 CAN 收发器必须改接 PB8/PB9。
+1. USB PMA 恢复工作。
+2. 代码 43 消失。
+3. Windows 正常识别 `USB\VID_0483&PID_5740`。
+4. CDC ACM 串口成功出现为 COM5。
 
-## Windows 显示“设备描述符请求失败”（代码 43）
+这项对照测试证明 USB 接口、USB 线、D+ 上拉、时钟、描述符和 CDC 驱动本身都正常。
 
-这表示主机检测到了 USB 连接，但 MCU 没有正确完成枚举；此时还没有进入 CDC 驱动加载阶段，安装或替换串口驱动不会解决问题。按下面顺序检查：
+## PCAN 的含义
 
-1. 确认 `BOOT0=0`，断开 USB 和下载器的全部供电，再重新插入 USB；若烧录 `.bin`，起始地址必须是 `0x08000000`。
-2. 确认板上是 8 MHz 外部晶振。当前固件按 8 MHz HSE、72 MHz SYSCLK 和 48 MHz USB 时钟配置。
-3. 检查 PA12/D+ 到 3.3 V 的外部上拉。STM32F103 没有可代替它的 USB 内部上拉，电阻应为 `1.5 kOhm`；部分 Blue Pill 克隆板误装 `10 kOhm`（丝印 `103`），应换成 `1.5 kOhm`（丝印 `152`），或在 10 kOhm 上并联约 1.8 kOhm。
-4. 确认 USB D- 接 PA11、D+ 接 PA12，没有接反，并尝试另一根确认可传数据的 USB 线和主机 USB 口。
+PCAN-View 和 PCAN-Basic 面向 PEAK 设备协议及其驱动。把 USB VID/PID 或产品字符串改成 PEAK 的值并不能实现 PCAN，并且不应冒用第三方设备标识。
 
-固件启动时会先把 D+ 拉低 20 ms，让带固定上拉电阻的板子产生一次明确的断开/重连，再以浮空 GPIO 配置启动 USB 外设。不要在 PA11/D- 上增加上拉电阻。
+如果诉求只是让电脑通过板载 USB 访问 CAN，可在支持 USB/CAN 并发的新 MCU 上实现 CDC 文本协议或公开的 `gs_usb`。如果必须兼容 PCAN 软件，需要先取得 PEAK 提供的公开协议、驱动接口与标识授权。
+
+## 后续硬件选择
+
+- 保持现有 STM32F103C6T6：使用外置 USB-UART，运行主分支固件。
+- 更换 MCU：选择数据手册明确支持 USB 和 CAN 并发、Flash/RAM 足够且封装适合板卡的型号，再重新核对引脚和时钟。
+- 增加独立控制器：保留 STM32F103，把 USB 或 CAN 功能放到另一颗芯片。
+
+在确定新 MCU 前，不应继续为此分支实现 PCAN 或 `gs_usb`，因为协议层代码无法修复共享 SRAM 限制。

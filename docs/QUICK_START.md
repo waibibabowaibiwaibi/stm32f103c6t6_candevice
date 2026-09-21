@@ -1,7 +1,7 @@
 # 五分钟快速开始
 
 > [!WARNING]
-> 本页描述的是主分支的外置 USB-UART 版本。当前 native USB 初稿分支请改看[板载 USB 初稿说明](NATIVE_USB_PROTOTYPE.md)，CAN 引脚也已从 PA11/PA12 改为 PB8/PB9。
+> 本页描述的是主分支的外置 USB-UART 版本。native USB 实验已经确认不可行：STM32F103 的 USB 与 CAN 不能并发使用，详见[板载 USB 实验报告](NATIVE_USB_PROTOTYPE.md)。
 
 这份说明以“第一次拿到源码和一块 STM32F103C6T6 板”为起点。先不要连接未知车辆或生产设备；请在实验台上使用可控电源和第二个 CAN 节点完成验证。
 

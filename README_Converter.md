@@ -1,5 +1,10 @@
 # STM32 native USB-CAN converter — firmware development notes
 
+> **Feasibility result:** STM32F103 USB and bxCAN share the same 512-byte
+> packet SRAM and cannot run concurrently.  The code in this investigation
+> branch is retained for reference and is not a usable USB-CAN bridge.  See
+> [the hardware investigation](docs/NATIVE_USB_PROTOTYPE.md).
+
 This is the detailed firmware/build reference. New users should start with the
 [main README](README.md), the [five-minute quick start](docs/QUICK_START.md),
 and the standalone [protocol reference](docs/PROTOCOL.md).

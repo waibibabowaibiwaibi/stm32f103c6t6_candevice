@@ -1,5 +1,8 @@
 # USB CDC-CAN 文本协议
 
+> [!WARNING]
+> 这是 native USB 实验分支的协议草案。STM32F103 的 USB 与 CAN 共用专用 SRAM，无法同时运行，因此该协议不能在这颗 MCU 上形成可用的 USB-CAN 桥。现有硬件请使用主分支的外置 USB-UART 版本。
+
 设备在 USB CDC 虚拟串口上使用基于 ASCII 的 SLCAN 风格协议。它只实现本页列出的帧收发与状态查询，不是完整的 Lawicel SLCAN 实现。
 
 ## USB CDC 参数
