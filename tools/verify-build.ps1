@@ -43,6 +43,12 @@ if (-not $gccCommand) {
 }
 
 $GNU = $GnuToolchainRoot -replace '\\', '/'
+$gnuLibc = (& $gccCommand.Source -mcpu=cortex-m3 -mthumb '-print-file-name=libc.a').Trim()
+$gnuLibgcc = (& $gccCommand.Source -mcpu=cortex-m3 -mthumb '-print-file-name=libgcc.a').Trim()
+if (-not (Test-Path -LiteralPath $gnuLibc) -or -not (Test-Path -LiteralPath $gnuLibgcc)) {
+    throw 'GNU Cortex-M3 Thumb runtime libraries not found'
+}
+$runtimeSearch = @("-L$(Split-Path -Parent $gnuLibc)", "-L$(Split-Path -Parent $gnuLibgcc)")
 $SIZE = Join-Path $gnuBin "arm-none-eabi-size$toolSuffix"
 $OBJCOPY = Join-Path $gnuBin "arm-none-eabi-objcopy$toolSuffix"
 $READELF = Join-Path $gnuBin "arm-none-eabi-readelf$toolSuffix"
@@ -102,7 +108,7 @@ $src = @(
 if ($Config -eq 'Debug') { $opt = @('-O0','-g3','-DDEBUG') } else { $opt = @('-Os','-g0','-DNDEBUG') }
 
 $defs = @('-DSTM32F103x6','-DUSE_HAL_DRIVER')
-$common = @('--target=arm-none-eabi','-mcpu=cortex-m3','-Wall','-Wextra',
+$common = @('--target=arm-none-eabi','-mcpu=cortex-m3','-mthumb','-Wall','-Wextra',
             '-fdata-sections','-ffunction-sections','-std=gnu11','-Wno-unused-parameter')
 
 $objs = @()
@@ -125,8 +131,8 @@ if ($LASTEXITCODE -ne 0) { $lines | ForEach-Object { Write-Host $_ }; exit 1 }
 $objs += $asmOut
 
 $elf = "$out/c6t6.elf"
-& $CC --target=arm-none-eabi -mcpu=cortex-m3 "-rtlib=libgcc" "--gcc-toolchain=$GNU" `
-      -nostdlib -lc_nano -lm -lgcc `
+& $CC --target=arm-none-eabi -mcpu=cortex-m3 -mthumb "-rtlib=libgcc" "--gcc-toolchain=$GNU" `
+      -nostdlib @runtimeSearch -lc_nano -lm -lgcc `
       "-T$root/STM32F103XX_FLASH.ld" "-Wl,-Map=$out/c6t6.map" `
       '-Wl,--gc-sections' -z noexecstack '-Wl,--print-memory-usage' `
       -o $elf @objs 2>&1 | Where-Object { $_ -notmatch 'multilib|unused during compilation' }
