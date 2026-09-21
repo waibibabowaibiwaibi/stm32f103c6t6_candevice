@@ -99,6 +99,24 @@ if(NOT GNU_TOOLCHAIN_ROOT)
     get_filename_component(GNU_TOOLCHAIN_ROOT "${_GNU_BIN_DIR}" DIRECTORY)
 endif()
 
+# ATfE's Clang driver does not currently understand GNU Arm's multilib table.
+# Ask GCC for the Cortex-M3 runtime directories explicitly; otherwise Clang
+# silently links the ARM-state libraries from the toolchain root, which fault
+# immediately on a Thumb-only Cortex-M processor.
+execute_process(
+    COMMAND "${ARM_NONE_EABI_GCC}" -mcpu=cortex-m3 -mthumb -print-file-name=libc.a
+    OUTPUT_VARIABLE GNU_CORTEX_M_LIBC
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(
+    COMMAND "${ARM_NONE_EABI_GCC}" -mcpu=cortex-m3 -mthumb -print-file-name=libgcc.a
+    OUTPUT_VARIABLE GNU_CORTEX_M_LIBGCC
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+if(NOT EXISTS "${GNU_CORTEX_M_LIBC}" OR NOT EXISTS "${GNU_CORTEX_M_LIBGCC}")
+    message(FATAL_ERROR "Unable to locate the GNU Cortex-M3 Thumb runtime libraries.")
+endif()
+get_filename_component(GNU_CORTEX_M_LIBC_DIR "${GNU_CORTEX_M_LIBC}" DIRECTORY)
+get_filename_component(GNU_CORTEX_M_LIBGCC_DIR "${GNU_CORTEX_M_LIBGCC}" DIRECTORY)
+
 find_program(CMAKE_OBJCOPY
     NAMES arm-none-eabi-objcopy arm-none-eabi-objcopy.exe
     HINTS "${GNU_TOOLCHAIN_ROOT}/bin"
@@ -115,8 +133,9 @@ elseif (STARM_TOOLCHAIN_CONFIG STREQUAL "STARM_NEWLIB")
   set(TOOLCHAIN_MULTILIBS "--config=newlib.cfg")
 endif()
 
-# MCU specific flags
-set(TARGET_FLAGS "--target=arm-none-eabi -mcpu=cortex-m3 ${TOOLCHAIN_MULTILIBS}")
+# MCU specific flags. Cortex-M processors execute Thumb instructions only, so
+# this must also be present while linking to select the Thumb multilib runtime.
+set(TARGET_FLAGS "--target=arm-none-eabi -mcpu=cortex-m3 -mthumb ${TOOLCHAIN_MULTILIBS}")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${TARGET_FLAGS}")
 set(CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS} -x assembler-with-cpp -MP")
@@ -134,6 +153,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${TARGET_FLAGS}")
 if (STARM_TOOLCHAIN_CONFIG STREQUAL "STARM_HYBRID")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rtlib=libgcc --gcc-toolchain=\"${GNU_TOOLCHAIN_ROOT}\"")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -nostdlib")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L\"${GNU_CORTEX_M_LIBC_DIR}\" -L\"${GNU_CORTEX_M_LIBGCC_DIR}\"")
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lc_nano -lm -lgcc")
   set(TOOLCHAIN_LINK_LIBRARIES "")
 elseif(STARM_TOOLCHAIN_CONFIG STREQUAL "STARM_NEWLIB")
