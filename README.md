@@ -1,5 +1,7 @@
 # UART-CAN Bridge
 
+[![CI](https://github.com/waibibabowaibiwaibi/stm32f103c6t6_candevice/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/waibibabowaibiwaibi/stm32f103c6t6_candevice/actions/workflows/ci.yml)
+
 一个基于 STM32F103C6T6 的开源 UART ↔ CAN 转换器，包含设备固件、Windows / Linux 图形上位机和开放的文本协议。
 
 > “卧槽张哥，你把 CAN 盒拿走了，那我呢？”
@@ -66,17 +68,17 @@ MCU 与 CAN 收发器的典型连接：
 
 ### 下载与运行
 
-正式发布后，在 [Releases 页面](../../releases/latest)下载：
+在 [Releases 页面](../../releases/latest)下载当前已发布版本：
 
 - `UART-CAN-Host-<version>-windows-x64.exe`：Windows 上位机
-- `UART-CAN-Host-<version>-linux-x64.tar.gz`：Linux x64 上位机压缩包
-- `UART-CAN-Host-<version>-linux-x64.tar.gz.sha256`：Linux 压缩包校验文件
+- `UART-CAN-Host-<version>-linux-x64.tar.gz`：Linux x64 上位机压缩包（将从下一版本开始随 Release 提供）
+- `UART-CAN-Host-<version>-linux-x64.tar.gz.sha256`：Linux 压缩包校验文件（将从下一版本开始随 Release 提供）
 - `c6t6-<version>.hex`：推荐烧录文件
 - `c6t6-<version>.bin`：从 `0x08000000` 烧录
 - `SHA256SUMS.txt`：Windows 上位机、固件和许可证文件的完整性校验
 - `LICENSE.txt`、`THIRD_PARTY_NOTICES.md` 和厂商许可证：随二进制保留的授权材料
 
-当前还没有 GitHub Release 时，也可以从源码运行上位机：
+需要使用尚未发布的新功能时，也可以从源码运行上位机：
 
 ```powershell
 cd host_app
@@ -159,6 +161,7 @@ GitHub Actions 会重复执行 GCC 固件构建、自动测试，以及 Windows 
 ## 已知限制
 
 - 仅支持经典 CAN 2.0，**不支持 CAN FD**
+- STM32F103 的片上 USB 与 bxCAN 共用专用 SRAM，不能同时工作，因此当前硬件不能仅靠固件变成 PCAN、`gs_usb` 或其他板载 USB-CAN 设备；实板排查过程见[板载 USB-CAN 实验报告](docs/USB_CAN_LIMITATION.md)
 - CAN 波特率修改只在本次运行中生效，设备复位后恢复为 500 kbit/s
 - 设备协议没有发送 ACK；上位机不能确认报文是否真正出现在总线上
 - 没有时间戳同步，界面时间是上位机收到串口数据的时间

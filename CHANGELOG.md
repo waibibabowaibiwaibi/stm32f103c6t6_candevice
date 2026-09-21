@@ -9,6 +9,7 @@
 - Linux 上位机可执行文件、带许可证与 SHA-256 的 tar.gz 打包脚本，以及 Windows/Linux CI 构建
 - 亮色主题，默认跟随系统亮暗并即时切换；可手动选择亮色或暗色并保存设置
 - Linux 中文字体适配、串口权限提示和伪终端串口读写测试
+- STM32F103 片上 USB 与 bxCAN 无法并发的实板调查报告
 
 ### Changed
 
@@ -16,6 +17,10 @@
 - Windows CMake Tools 只显示本机可用的调试与发布预设，Linux / CI 继续使用共享 GCC/Clang 预设
 - 重新生成亮色与暗色上位机截图，并同步跨平台构建、发布说明和问题模板
 - Keil MDK-ARM 工程迁移到 ARM Compiler 6.24（ArmClang）和 CMSIS 6.3.0
+
+### Fixed
+
+- ATfE/Clang 混合工具链显式选择 Cortex-M3 Thumb 运行库，避免 Release 固件在进入 `main()` 前触发 `UNDEFINSTR` HardFault
 
 ## [0.1.0-beta] - 2026-09-14
 
