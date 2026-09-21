@@ -23,6 +23,13 @@
 
 - ATfE/Clang 混合工具链显式选择 Cortex-M3 Thumb 运行库，避免 Release 固件在进入 `main()` 前触发 `UNDEFINSTR` HardFault
 
+### Verified
+
+- 在真实 CAN 总线上通过 10 / 20 / 50 / 100 / 125 / 250 / 500 / 800 / 1000 kbit/s 全部支持档位测试
+- UART → CAN 与 CAN → UART 双向传输通过，覆盖标准帧、扩展帧和远程帧
+- 连续运行、总线断开与 bus-off 恢复测试通过，无异常丢帧或串口错误增长
+- 收发器与 MCU 的逻辑电平、供电和温升检查通过
+
 ## [0.1.0-beta] - 2026-09-14
 
 ### Added

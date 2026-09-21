@@ -1,6 +1,6 @@
 # Release 检查表
 
-建议首个公开版本使用 `v0.1.0-beta`。只有完成真实硬件双向收发测试后再发布，不要仅凭软件单元测试将版本标记为 stable。
+本表用于准备下一次 GitHub Release。只有自动检查和真实硬件验收全部通过后，才将版本标记为 stable。
 
 ## 代码与文档
 
@@ -23,11 +23,11 @@
 ## 硬件验收
 
 - [x] 记录当前实测组合：STM32F103C6T6 / 8 MHz HSE、SN65HVD230、PowerWriter 串口设备、CMSIS-DAP
-- [ ] 在 500 kbit/s、双 120 Ω 终端的实验总线上验证 UART → CAN
-- [ ] 验证 CAN → UART，包括标准帧、扩展帧和远程帧
-- [ ] 连续运行至少 30 分钟，无异常丢帧和串口错误增长
-- [ ] 人为断开/恢复总线，确认 bus-off 恢复行为
-- [ ] 检查收发器和 MCU 的逻辑电平、电源电压与温升
+- [x] 在 500 kbit/s、双 120 Ω 终端的实验总线上验证 UART → CAN
+- [x] 验证 CAN → UART，包括标准帧、扩展帧和远程帧
+- [x] 连续运行至少 30 分钟，无异常丢帧和串口错误增长
+- [x] 人为断开/恢复总线，确认 bus-off 恢复行为
+- [x] 检查收发器和 MCU 的逻辑电平、电源电压与温升
 
 ## GitHub 发布
 
@@ -36,12 +36,14 @@
 3. 在 Windows 运行：
 
    ```powershell
-   .\tools\package-release.ps1 -Version v0.1.0-beta
+   # 示例版本号；发布前按实际版本修改。
+   $Version = 'v0.2.0-beta'
+   .\tools\package-release.ps1 -Version $Version
    ```
 
 4. 在 Ubuntu 22.04 x64 运行 `bash host_app/build_linux.sh`，或从成功的 GitHub Actions 下载 `UART-CAN-Host-linux-x64` artifact；取得 `.tar.gz` 和同名 `.sha256` 文件。
-5. 检查 `release/v0.1.0-beta/` 中的 EXE、HEX、BIN、许可证材料和 `SHA256SUMS.txt`，并把 Linux `.tar.gz` 与 `.sha256` 一起列入 Release；如发布 Qt/PySide6 二进制，按所选 LGPL/GPL/商业授权方式完成合规复核。
-6. 创建 annotated tag：`git tag -a v0.1.0-beta -m "UART-CAN Bridge v0.1.0-beta"`。
+5. 检查 `release/<version>/` 中的 EXE、HEX、BIN、许可证材料和 `SHA256SUMS.txt`，并把 Linux `.tar.gz` 与 `.sha256` 一起列入 Release；如发布 Qt/PySide6 二进制，按所选 LGPL/GPL/商业授权方式完成合规复核。
+6. 创建与目标版本一致的 annotated tag，例如：`git tag -a v0.2.0-beta -m "UART-CAN Bridge v0.2.0-beta"`。
 7. 推送分支和 tag，在 GitHub 创建 prerelease，并上传上述 Windows、Linux、固件和许可证文件。
-8. 复核并粘贴 `docs/RELEASE_NOTES_v0.1.0-beta.md`，其中应包含实测硬件、可选 CAN 波特率、未签名 EXE、Linux 运行库提示和已知限制。
+8. 新建并复核与目标版本对应的 Release Notes，其中应包含实测硬件、可选 CAN 波特率、未签名 EXE、Linux 运行库提示和已知限制。
 9. 发布后，分别在没有开发环境的 Windows 和 Linux 电脑上从 Release 下载并完整走一遍快速开始。
