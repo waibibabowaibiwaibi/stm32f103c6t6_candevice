@@ -13,6 +13,10 @@ and the standalone [protocol reference](docs/PROTOCOL.md).
 Clock tree: HSE 8 MHz -> PLL x9 -> 72 MHz SYSCLK, APB1 36 MHz. USB uses
 the PLL clock divided by 1.5 to obtain 48 MHz. CAN1 uses AFIO remap 2 so that
 PA11/PA12 remain available to USB.
+The USB device stack, CDC class glue, endpoint PMA layout, descriptors and PCD
+low-level driver are generated from `c6t6.ioc` by STM32CubeMX. Project-specific
+receive forwarding and transmit-state handling stay inside CubeMX `USER CODE`
+blocks in `USB_DEVICE/App/usbd_cdc_if.c`.
 Default CAN bit timing: `36 MHz / Prescaler(4) / (1 + TS1(15) + TS2(2)) = 500 kbit/s`,
 sample point 88.9%. `Core/Src/can_bitrate.c` contains the exact timing table for
 all nine supported rates; its host-side test verifies every divisor against the
@@ -165,7 +169,7 @@ permissions and package compatibility are documented in
 
 | Build | text | data | bss | flash | RAM |
 |---|---|---|---|---|---|
-| gcc-Release (`-Os`) | 19264 | 476 | 5620 | 19740 B (60.24%) | 6096 B (59.53%) |
+| gcc-Release (`-Os`) | 19368 | 468 | 5668 | 19836 B (60.53%) | 6128 B (59.84%) |
 
 This row is from the native USB prototype's local GCC release build. ATfE/EIDE
 and MDK use different runtime libraries, so their exact sizes should be read

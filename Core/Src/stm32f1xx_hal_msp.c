@@ -150,7 +150,14 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef* hcan)
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_8|GPIO_PIN_9);
 
     /* CAN1 interrupt DeInit */
-    /* The USB device still owns the shared USB_LP_CAN1_RX0 vector. */
+    /* USER CODE BEGIN CAN1:USB_LP_CAN1_RX0_IRQn disable */
+    /**
+    * Uncomment the line below to disable the "USB_LP_CAN1_RX0_IRQn" interrupt
+    * Be aware, disabling shared interrupt may affect other IPs
+    */
+    /* HAL_NVIC_DisableIRQ(USB_LP_CAN1_RX0_IRQn); */
+    /* USER CODE END CAN1:USB_LP_CAN1_RX0_IRQn disable */
+
     HAL_NVIC_DisableIRQ(CAN1_RX1_IRQn);
     /* USER CODE BEGIN CAN1_MspDeInit 1 */
 

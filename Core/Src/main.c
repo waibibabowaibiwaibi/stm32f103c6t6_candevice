@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -476,16 +477,14 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_CAN_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
     msgqueue_init(&bridge_rxq, &bridge_line_slots[0][0], BRIDGE_LINE_MAX);
     ring_u8_init(&bridge_txq, bridge_tx_buf, BRIDGE_TX_BUF_SIZE);
     can_active_bitrate = can_bitrate_default();
 
-    /* Bring up USB before enabling CAN error notifications on their shared
-       interrupt vector.  This keeps enumeration deterministic even when CAN_RX
-       is floating or the transceiver is not connected during a USB-only test. */
-    MX_USB_DEVICE_Init();
-
+    /* USB is already up before CAN notifications are enabled below.  This
+       keeps enumeration deterministic on their shared interrupt vector. */
     if (CAN_StartWithFilter() != HAL_OK)
     {
         Error_Handler();
@@ -560,8 +559,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-
-  /* USB Full Speed requires an exact 48 MHz clock: 72 MHz PLL / 1.5. */
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB;
   PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
@@ -623,6 +620,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);

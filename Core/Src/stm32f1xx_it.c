@@ -55,8 +55,8 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern PCD_HandleTypeDef hpcd_USB_FS;
 extern CAN_HandleTypeDef hcan;
-extern PCD_HandleTypeDef hpcd;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -207,9 +207,11 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
   /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 0 */
 
   /* USER CODE END USB_LP_CAN1_RX0_IRQn 0 */
-  if (hpcd.Instance == USB)
+  /* USB and CAN RX FIFO0 share this vector.  Service USB first so control
+     transfers during enumeration are not delayed by CAN traffic. */
+  if (hpcd_USB_FS.Instance == USB)
   {
-    HAL_PCD_IRQHandler(&hpcd);
+    HAL_PCD_IRQHandler(&hpcd_USB_FS);
   }
   HAL_CAN_IRQHandler(&hcan);
   /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 1 */

@@ -59,6 +59,10 @@ $inc = @(
     "-I$root/Drivers/STM32F1xx_HAL_Driver/Inc/Legacy"
     "-I$root/Drivers/CMSIS/Device/ST/STM32F1xx/Include"
     "-I$root/Drivers/CMSIS/Include"
+    "-I$root/USB_DEVICE/App"
+    "-I$root/USB_DEVICE/Target"
+    "-I$root/Middlewares/ST/STM32_USB_Device_Library/Core/Inc"
+    "-I$root/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc"
 )
 
 $src = @(
@@ -82,7 +86,17 @@ $src = @(
     'Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash.c'
     'Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_flash_ex.c'
     'Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_exti.c'
-    'Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c'
+    'Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_pcd.c'
+    'Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_pcd_ex.c'
+    'Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_ll_usb.c'
+    'Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c'
+    'Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c'
+    'Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c'
+    'Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c'
+    'USB_DEVICE/App/usb_device.c'
+    'USB_DEVICE/App/usbd_desc.c'
+    'USB_DEVICE/App/usbd_cdc_if.c'
+    'USB_DEVICE/Target/usbd_conf.c'
 )
 
 if ($Config -eq 'Debug') { $opt = @('-O0','-g3','-DDEBUG') } else { $opt = @('-Os','-g0','-DNDEBUG') }
