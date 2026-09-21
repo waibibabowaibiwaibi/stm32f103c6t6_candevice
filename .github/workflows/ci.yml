@@ -9,12 +9,12 @@ permissions:
 
 jobs:
   test-and-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install ARM GCC, Ninja, and Qt runtime libraries
         run: |
@@ -31,7 +31,7 @@ jobs:
         run: ./tools/run-host-tests.ps1
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -57,7 +57,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Linux Qt runtime libraries
         if: runner.os == 'Linux'
@@ -66,7 +66,7 @@ jobs:
           sudo apt-get install --yes libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 fonts-noto-cjk
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -97,7 +97,7 @@ jobs:
 
       - name: Upload Linux package
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: UART-CAN-Host-linux-x64
           path: |
@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload Windows executable
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: UART-CAN-Host-windows-x64
           path: host_app/dist/UART-CAN-Host.exe

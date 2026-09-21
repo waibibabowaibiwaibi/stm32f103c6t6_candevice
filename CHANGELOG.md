@@ -17,6 +17,7 @@
 - Windows CMake Tools 只显示本机可用的调试与发布预设，Linux / CI 继续使用共享 GCC/Clang 预设
 - 重新生成亮色与暗色上位机截图，并同步跨平台构建、发布说明和问题模板
 - Keil MDK-ARM 工程迁移到 ARM Compiler 6.24（ArmClang）和 CMSIS 6.3.0
+- GitHub Actions 升级到 Node.js 24 版本，并固定固件测试环境为 Ubuntu 24.04
 
 ### Fixed
 
